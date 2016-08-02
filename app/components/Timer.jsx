@@ -27,7 +27,7 @@ class Timer extends React.Component{
 
       <div>
         <p>Pomo Timer</p>
-        <Clock />
+        <Clock {...this.state}/>
         <Controls {...this.state} onBreakChange={this.handleBreakChange} onWorkChange={this.handleWorkChange}/>
       </div>
     )

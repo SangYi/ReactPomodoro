@@ -30,8 +30,8 @@ class Controls extends React.Component{
 
       <div>
         <p>Pomo Controls</p>
-        <button className="button alert hollow" onClick={this.onBreakChange(breakSession+1)}>+</button> {this.props.breakSession} <button className="button alert hollow" onClick={this.onBreakChange(breakSession-1)}>-</button>
-        <button className="button alert hollow" onClick={this.onWorkChange(workSession+1)}>+</button> {this.props.workSession} <button className="button alert hollow" onClick={this.onWorkChange(workSession-1)}>-</button>
+        <button className="button alert hollow" onClick={this.onBreakChange(breakSession-1)}>-</button> {this.props.breakSession} <button className="button alert hollow" onClick={this.onBreakChange(breakSession+1)}>+</button>
+        <button className="button alert hollow" onClick={this.onWorkChange(workSession-1)}>-</button> {this.props.workSession} <button className="button alert hollow" onClick={this.onWorkChange(workSession+1)}>+</button>
       </div>
     );
   }

@@ -8,7 +8,8 @@ class Clock extends React.Component{
     };
   }
 
-  formatSeconds = (totalSeconds) => {
+  formatSeconds = (totalMinutes) => {
+     let totalSeconds = totalMinutes*60;
      let seconds = totalSeconds%60;
      let minutes = Math.floor(totalSeconds/60);
      if(seconds < 10){
@@ -20,10 +21,12 @@ class Clock extends React.Component{
      return minutes +':'+ seconds;
   }
   render = () => {
+    let {workSession, breakSession} = this.props;
+
     return(
       <div>
         <p>Pomo Clock</p>
-        {this.formatSeconds(100)}
+        {this.formatSeconds(workSession)}
       </div>
     )
   }
