@@ -9,6 +9,7 @@ class Controls extends React.Component{
 
   }
 
+
   onBreakChange = (newBreak) => {
     return ()=> {
       // this.setState({breakSession:newBreak});
@@ -21,8 +22,8 @@ class Controls extends React.Component{
       // this.setState({breakSession:newBreak});
       this.props.onWorkChange(newWork);
     };
-
   }
+
   render = () => {
     let {breakSession, workSession} = this.props;
     return(

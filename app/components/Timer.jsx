@@ -8,9 +8,30 @@ class Timer extends React.Component{
     super(props);
     this.state = {
       breakSession: 5,
-      workSession: 25
+      workSession: 25,
+      breakCount: undefined,
+      workCount: undefined,
+      sessionType: 'work',
+      timerStatus: 'stopped'
     };
 
+  }
+
+  componentDidUpdate (prevProps, prevState) {
+    console.log("prevState",prevState);
+    // if(this.state.countdownStatus !== prevState.countdownStatus) {
+    //   switch(this.state.countdownStatus){
+    //     case 'started':
+    //       this.startTimer();
+    //       break;
+    //     case 'stopped':
+    //       this.setState({count: 0});
+    //     case 'paused':
+    //       clearInterval(this.timer);
+    //       this.timer = undefined;
+    //       break;
+    //   }
+    // }
   }
 
   handleBreakChange = (newBreakTime) => {
@@ -19,6 +40,10 @@ class Timer extends React.Component{
 
   handleWorkChange = (newWorkTime) => {
     this.setState({workSession:newWorkTime});
+  }
+
+  startTimer = () => {
+    this.timer = setInterval()
   }
 
   render = () => {
