@@ -15,11 +15,10 @@ class PomodoroApp extends React.Component {
 
 
   render = () => {
-    
+
     return (
       <div className="row">
         <div className="column small-centered medium-6 large-4">
-          <p>Pomo from app</p>
           <Timer />
         </div>
       </div>

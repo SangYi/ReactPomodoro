@@ -9,8 +9,8 @@ var Timer = React.createClass({
       countdownStatus: 'stopped',
       breakSession: 5,
       workSession: 25,
-      breakCount: undefined,
-      workCount: undefined,
+      breakCount: 300,
+      workCount: 1500,
       sessionType: 'work'
 
     };
@@ -23,7 +23,11 @@ var Timer = React.createClass({
           this.startTimer();
           break;
         case 'stopped':
-          this.setState({count: 0});
+          this.setState({
+            breakCount: this.state.breakSession*60,
+            workCount: this.state.workSession*60,
+            sessionType: 'work'
+          });
         case 'paused':
           clearInterval(this.timer)
           this.timer = undefined;
@@ -41,52 +45,29 @@ var Timer = React.createClass({
   startTimer(){
 
     this.timer = setInterval(() => {
-    var{sessionType} = this.state;
+      var{sessionType} = this.state;
 
-    if(sessionType==="work"){
-      var newCount = this.state.workCount - 1;
-      this.setState({
-        workCount: newCount >= 0 ? newCount : 0
-      });
+      if(sessionType==="work"){
+        var newCount = this.state.workCount - 1;
+        this.setState({
+          workCount: newCount >= 0 ? newCount : 0
+        });
 
-      if (newCount === 0) {
-        this.setState({sessionType: 'break',workCount: this.state.workSession*60});
+        if (newCount === 0) {
+          this.setState({sessionType: 'break',workCount: this.state.workSession*60});
+        }
       }
 
-    }
+      if(sessionType==="break"){
+        var newCount = this.state.breakCount - 1;
+        this.setState({
+          breakCount: newCount >= 0 ? newCount : 0
+        });
 
-    if(sessionType==="break"){
-      var newCount = this.state.breakCount - 1;
-      this.setState({
-        breakCount: newCount >= 0 ? newCount : 0
-      });
-
-      if (newCount === 0) {
-        this.setState({sessionType: 'work',breakCount: this.state.breakSession*60});
+        if (newCount === 0) {
+          this.setState({sessionType: 'work',breakCount: this.state.breakSession*60});
+        }
       }
-
-    }
-
-
-      // var newCount;
-      // if(sessionType==='work'){
-      //   newCount = this.state.workCount - 1;
-      // }else if(sessionType==='break'){
-      //   newCount = this.state.breakCount - 1;
-      // }
-      // this.setState({
-      //   count: newCount >= 0 ? newCount : 0
-      // });
-      //
-      // if (newCount === 0 && sessionType === 'work') {
-      //   this.setState({sessionType: 'break'});
-      // }else if(newCount === 0 && sessionType === 'work'){
-      //   this.setState({sessionType: 'work'});
-      // }
-
-      // if (newCount === 0) {
-      //   this.setState({countdownStatus: 'stopped'});
-      // }
     },1000);
   },
 
@@ -104,18 +85,21 @@ var Timer = React.createClass({
   },
 
   handleBreakChange: function(newBreakTime){
-    this.setState({
-      breakSession:newBreakTime,
-      breakCount: newBreakTime*60
-
-    });
+    if(newBreakTime>0){
+      this.setState({
+        breakSession:newBreakTime,
+        breakCount: newBreakTime*60
+      });
+    }
   },
 
   handleWorkChange: function(newWorkTime){
-    this.setState({
-      workSession:newWorkTime,
-      workCount: newWorkTime*60
-    });
+    if(newWorkTime){
+      this.setState({
+        workSession:newWorkTime,
+        workCount: newWorkTime*60
+      });
+    }
   },
 
   render: function(){
@@ -132,90 +116,12 @@ var Timer = React.createClass({
 
     return(
       <div>
-        <h3 className="page-title">Countdown App</h3>
+        <h3 className="page-title">Pomodoro App</h3>
         {renderClock()}
         <Controls {...this.state} onStatusChange={this.handleStatusChange} onBreakChange={this.handleBreakChange} onWorkChange={this.handleWorkChange}/>
-
-
 
       </div>
     )
   }
 });
 module.exports = Timer;
-
-
-// let React = require('react');
-//
-// let Clock = require('Clock');
-// let Controls = require('Controls');
-//
-// class Timer extends React.Component{
-//   constructor(props){
-//     super(props);
-//     this.state = {
-//       breakSession: 5,
-//       workSession: 25,
-//       breakCount: undefined,
-//       workCount: undefined,
-//       sessionType: 'work',
-//       timerStatus: 'stopped'
-//     };
-//
-//   }
-//
-//   componentDidUpdate (prevProps, prevState) {
-//     console.log("prevState",prevState);
-//     if(this.state.timerStatus !== prevState.timerStatus) {
-//       switch(this.state.timerStatus){
-//         case 'started':
-//           this.startTimer();
-//           break;
-//         case 'stopped':
-//           this.setState({breakCount: 0, workCount:0});
-//         case 'paused':
-//           clearInterval(this.timer)
-//           this.timer = undefined;
-//           break;
-//       }
-//     }
-//   }
-//
-//   handleBreakChange = (newBreakTime) => {
-//     this.setState({breakSession:newBreakTime});
-//   }
-//
-//   handleWorkChange = (newWorkTime) => {
-//     this.setState({workSession:newWorkTime});
-//   }
-//
-//   handleTimerStatus = (newStatus) => {
-//     this.setState({timerStatus:newStatus});
-//   }
-//
-//   startTimer = () => {
-//     this.setState({
-//       breakCount:this.state.breakSession*60,
-//       workCount: this.state.workSession*60
-//     })
-//     this.timer = setInterval(() => {
-//
-//     },1000)
-//   };
-//
-//
-//   render = () => {
-//
-//     console.log(this.state);
-//     return(
-//
-//       <div>
-//         <p>Pomo Timer</p>
-//         <Clock {...this.state} onStatusChange={this.handleTimerStatus}/>
-//         <Controls {...this.state} onBreakChange={this.handleBreakChange} onWorkChange={this.handleWorkChange}/>
-//       </div>
-//     )
-//   }
-// }
-//
-// module.exports= Timer;
