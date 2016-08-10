@@ -1,8 +1,8 @@
 var React = require('react');
 var ReactDOM = require('react-dom');
+var {Provider} = require('react-redux');
 var {Route, Router, IndexRoute, hashHistory} = require('react-router');
 
-// var TodoApp = require('TodoApp');
 var PomodoroApp = require('PomodoroApp');
 
 var actions = require('actions');
@@ -19,6 +19,13 @@ $(document).foundation();
 require('style!css!sass!applicationStyles');
 
 ReactDOM.render(
-  <PomodoroApp test="test props"/>,
+  <Provider store={store}>
+    <PomodoroApp />
+  </Provider>,
   document.getElementById('app')
 );
+
+// ReactDOM.render(
+//   <PomodoroApp test="test props"/>,
+//   document.getElementById('app')
+// );

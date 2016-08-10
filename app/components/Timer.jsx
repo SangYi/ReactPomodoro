@@ -1,11 +1,12 @@
 var React = require('react');
+var {connect} = require('react-redux');
+
 var Clock = require('Clock');
 var Controls = require('Controls');
 
 var Timer = React.createClass({
   getInitialState: function (){
     return {
-      count: 0,
       countdownStatus: 'stopped',
       breakSession: 5,
       workSession: 25,
@@ -124,4 +125,12 @@ var Timer = React.createClass({
     )
   }
 });
-module.exports = Timer;
+
+module.exports = connect(
+  (state) => {
+    return {
+      ...state
+    };
+  }
+)(Timer);
+// module.exports = Timer;
