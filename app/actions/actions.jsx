@@ -1,20 +1,6 @@
-export var setStatusStart = (status) => {
+export var setStatus = (status) => {
   return {
-    type: 'SET_STATUS_START',
-    status
-  };
-};
-
-export var setStatusStop = (status) => {
-  return {
-    type: 'SET_STATUS_STOP',
-    status
-  };
-};
-
-export var setStatusPause = (status) => {
-  return {
-    type: 'SET_STATUS_PAUSE',
+    type: 'SET_STATUS',
     status
   };
 };

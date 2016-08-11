@@ -1,16 +1,13 @@
 // import React from 'react';
 let React = require('react');
 
-let Timer = require('Timer');
+// let Timer = require('Timer');
+import Timer from 'Timer';
 
 class PomodoroApp extends React.Component {
   constructor(props){
       super(props);
-      this.state = {
-        completed: false
-      };
-
-
+      
   }
 
 

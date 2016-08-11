@@ -1,10 +1,13 @@
 var React = require('react');
 var {connect} = require('react-redux');
+var actions = require('actions');
 
-var Clock = require('Clock');
-var Controls = require('Controls');
+// var Clock = require('Clock');
+// var Controls = require('Controls');
+import Clock from 'Clock';
+import Controls from 'Controls';
 
-var Timer = React.createClass({
+export var Timer = React.createClass({
   getInitialState: function (){
     return {
       countdownStatus: 'stopped',
@@ -72,40 +75,40 @@ var Timer = React.createClass({
     },1000);
   },
 
-  handleSetCountdown: function (seconds){
-    this.setState({
-      count: seconds,
-      countdownStatus: 'started'
-    });
-  },
-
-  handleStatusChange: function (newStatus){
-    this.setState({
-      countdownStatus: newStatus
-    })
-  },
-
-  handleBreakChange: function(newBreakTime){
-    if(newBreakTime>0){
-      this.setState({
-        breakSession:newBreakTime,
-        breakCount: newBreakTime*60
-      });
-    }
-  },
-
-  handleWorkChange: function(newWorkTime){
-    if(newWorkTime){
-      this.setState({
-        workSession:newWorkTime,
-        workCount: newWorkTime*60
-      });
-    }
-  },
+  // handleSetCountdown: function (seconds){
+  //   this.setState({
+  //     count: seconds,
+  //     countdownStatus: 'started'
+  //   });
+  // },
+  //
+  // handleStatusChange: function (newStatus){
+  //   this.setState({
+  //     countdownStatus: newStatus
+  //   })
+  // },
+  //
+  // handleBreakChange: function(newBreakTime){
+  //   if(newBreakTime>0){
+  //     this.setState({
+  //       breakSession:newBreakTime,
+  //       breakCount: newBreakTime*60
+  //     });
+  //   }
+  // },
+  //
+  // handleWorkChange: function(newWorkTime){
+  //   if(newWorkTime){
+  //     this.setState({
+  //       workSession:newWorkTime,
+  //       workCount: newWorkTime*60
+  //     });
+  //   }
+  // },
 
   render: function(){
 
-    var {breakCount, workCount, countdownStatus, sessionType} = this.state;
+    var {breakCount, workCount, countdownStatus, sessionType, dispatch} = this.state;
 
     var renderClock = () => {
       if(this.state.sessionType === 'work'){
@@ -119,18 +122,15 @@ var Timer = React.createClass({
       <div>
         <h3 className="page-title">Pomodoro App</h3>
         {renderClock()}
-        <Controls {...this.state} onStatusChange={this.handleStatusChange} onBreakChange={this.handleBreakChange} onWorkChange={this.handleWorkChange}/>
+        <Controls/>
 
       </div>
     )
   }
 });
 
-module.exports = connect(
+export default connect(
   (state) => {
-    return {
-      ...state
-    };
+    return state;
   }
 )(Timer);
-// module.exports = Timer;
