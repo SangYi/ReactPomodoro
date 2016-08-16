@@ -22,7 +22,8 @@ export var pomodoroReducer = (state = initialState, action) => {
     case 'INCREMENT_BREAK_SESSION':
       return {
         ...state,
-        breakSession: state.breakSession + 1
+        breakSession: state.breakSession + 1,
+        breakCount: (state.breakSession + 1) * 60
       };
     case 'DECREMENT_BREAK_SESSION':
       return {
