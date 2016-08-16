@@ -69,3 +69,9 @@ export var decrementBreakCount = () => {
     type: 'DECREMENT_BREAK_COUNT'
   };
 };
+
+export var resetSettings = () => {
+  return {
+    type: "RESET"
+  };
+};

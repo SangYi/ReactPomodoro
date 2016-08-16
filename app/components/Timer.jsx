@@ -21,17 +21,22 @@ export var Timer = React.createClass({
   // },
 
   componentDidUpdate: function (prevProps, prevState) {
-    if(this.state.countdownStatus !== prevState.countdownStatus) {
-      switch(this.state.countdownStatus){
+    var {pomodoro, dispatch} = this.props;
+    // console.log(pomodoro.countdownStatus, prevProps.countdownStatus);
+    // console.log('prevProps',prevProps);
+    if(pomodoro.countdownStatus !== prevProps.pomodoro.countdownStatus) {
+      switch(pomodoro.countdownStatus){
         case 'started':
           this.startTimer();
           break;
         case 'stopped':
-          this.setState({
-            breakCount: this.state.breakSession*60,
-            workCount: this.state.workSession*60,
-            sessionType: 'work'
-          });
+          // this.setState({
+          //   breakCount: this.state.breakSession*60,
+          //   workCount: this.state.workSession*60,
+          //   sessionType: 'work'
+          // });
+          dispatch(actions.resetSettings());
+
         case 'paused':
           clearInterval(this.timer)
           this.timer = undefined;
@@ -50,31 +55,37 @@ export var Timer = React.createClass({
     var {dispatch} = this.props;
 
     this.timer = setInterval(() => {
-      var{sessionType} = this.state;
+      // var{sessionType} = this.state;
       var{pomodoro} = this.props;
 
       if(pomodoro.sessionType==="work"){
-        var newCount = this.state.workCount - 1;
-        this.setState({
-          workCount: newCount >= 0 ? newCount : 0
-        });
+        // var newCount = this.state.workCount - 1;
+        // this.setState({
+        //   workCount: newCount >= 0 ? newCount : 0
+        // });
+          dispatch(actions.decrementWorkCount());
 
-        if (newCount === 0) {
-          this.setState({sessionType: 'break',workCount: this.state.workSession*60});
+        if (pomodoro.workCount === 0) {
+          // this.setState({sessionType: 'break',workCount: this.state.workSession*60});
+          dispatch(actions.setStatus("break"));
+          dispatch(actions.setWorkCount(pomodoro.workSession * 60))
         }
       }
 
-      if(pomodor.sessionType==="break"){
-        var newCount = this.state.breakCount - 1;
-        this.setState({
-          breakCount: newCount >= 0 ? newCount : 0
-        });
+      if(pomodoro.sessionType==="break"){
+        // var newCount = this.state.breakCount - 1;
+        // this.setState({
+        //   breakCount: newCount >= 0 ? newCount : 0
+        // });
+        dispatch(actions.decrementBreakCount());
 
-        if (newCount === 0) {
-          this.setState({sessionType: 'work',breakCount: this.state.breakSession*60});
+        if (pomodoro.breakCount === 0) {
+          // this.setState({sessionType: 'work',breakCount: this.state.breakSession*60});
+          dispatch(actions.setStatus("work"));
+          dispatch(actions.setBreakCount(pomodoro.breakSession * 60))
         }
       }
-    },1000);
+    },100);
   },
 
   // handleSetCountdown: function (seconds){

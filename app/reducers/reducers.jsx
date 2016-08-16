@@ -1,9 +1,9 @@
 var initialState = {
   countdownStatus: 'stopped',
-  breakSession: 5,
-  workSession: 25,
-  breakCount: 300,
-  workCount: 1500,
+  breakSession: 1,
+  workSession: 1,
+  breakCount: 60,
+  workCount: 60,
   sessionType: 'work'
 };
 
@@ -12,7 +12,7 @@ export var pomodoroReducer = (state = initialState, action) => {
     case 'SET_STATUS':
       return {
         ...state,
-        countdownStatus: action.status                                                                                              ['countdownStatus'] = action.type
+        countdownStatus: action.status
       };
     case 'SET_SESSION_WORK':
       return {
@@ -30,19 +30,31 @@ export var pomodoroReducer = (state = initialState, action) => {
         breakSession: state.breakSession + 1
       };
     case 'DECREMENT_BREAK_SESSION':
+      // if(state.breakSession>1){
+      //   return {
+      //     ...state,
+      //     breakSession: state.breakSession - 1,
+      //     breakCount: (state.breakSession - 1) * 60
+      //   };
+      // }else{
+      //   return state;
+      // }
       return {
         ...state,
-        breakSession: state.breakSession - 1
+        breakSession: state.breakSession - 1,
+        breakCount: (state.breakSession - 1) * 60
       };
     case 'INCREMENT_WORK_SESSION':
       return {
         ...state,
-        workSession: state.workSession + 1
+        workSession: state.workSession + 1,
+        workCount: (state.workSession + 1) * 60
       };
     case 'DECREMENT_WORK_SESSION':
       return {
         ...state,
-        workSession: state.workSession - 1
+        workSession: state.workSession - 1,
+        workCount: (state.workSession - 1) * 60
       };
     case 'SET_BREAK_COUNT':
     return {
@@ -65,6 +77,15 @@ export var pomodoroReducer = (state = initialState, action) => {
       return {
         ...state,
         workCount: state.workCount - 1
+      };
+    case 'RESET':
+      return {
+        ...state,
+        breakSession: state.breakSession,
+        workSession: state.workSession,
+        breakCount: state.breakSession*60,
+        workCount: state.workSession*60,
+        sessionType: 'work'
       };
     default:
       return state
