@@ -1,17 +1,24 @@
-export var setStatus = (status) => {
+export var setCountdownStatus = (status) => {
   return {
-    type: 'SET_STATUS',
+    type: 'SET_COUNTDOWN_STATUS',
     status: status
   };
 };
 
-export var setSessionWork = (sessionType) => {
-
+export var setSessionType = (sessionType) => {
   return {
-    type: 'SET_SESSION_WORK',
+    type: 'SET_SESSION_TYPE',
     sessionType
   };
 };
+//
+// export var setSessionWork = (sessionType) => {
+//
+//   return {
+//     type: 'SET_SESSION_WORK',
+//     sessionType
+//   };
+// };
 
 export var setSessionBreak = (sessionType) => {
   return {
