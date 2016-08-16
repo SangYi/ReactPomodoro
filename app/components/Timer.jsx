@@ -8,17 +8,17 @@ import Clock from 'Clock';
 import Controls from 'Controls';
 
 export var Timer = React.createClass({
-  getInitialState: function (){
-    return {
-      countdownStatus: 'stopped',
-      breakSession: 5,
-      workSession: 25,
-      breakCount: 300,
-      workCount: 1500,
-      sessionType: 'work'
-
-    };
-  },
+  // getInitialState: function (){
+  //   return {
+  //     countdownStatus: 'stopped',
+  //     breakSession: 5,
+  //     workSession: 25,
+  //     breakCount: 300,
+  //     workCount: 1500,
+  //     sessionType: 'work'
+  //
+  //   };
+  // },
 
   componentDidUpdate: function (prevProps, prevState) {
     if(this.state.countdownStatus !== prevState.countdownStatus) {
@@ -47,11 +47,13 @@ export var Timer = React.createClass({
   // },
 
   startTimer(){
+    var {dispatch} = this.props;
 
     this.timer = setInterval(() => {
       var{sessionType} = this.state;
+      var{pomodoro} = this.props;
 
-      if(sessionType==="work"){
+      if(pomodoro.sessionType==="work"){
         var newCount = this.state.workCount - 1;
         this.setState({
           workCount: newCount >= 0 ? newCount : 0
@@ -62,7 +64,7 @@ export var Timer = React.createClass({
         }
       }
 
-      if(sessionType==="break"){
+      if(pomodor.sessionType==="break"){
         var newCount = this.state.breakCount - 1;
         this.setState({
           breakCount: newCount >= 0 ? newCount : 0
@@ -107,14 +109,16 @@ export var Timer = React.createClass({
   // },
 
   render: function(){
+    console.log(this.props);
 
-    var {breakCount, workCount, countdownStatus, sessionType, dispatch} = this.state;
+    // var {breakCount, workCount, countdownStatus, sessionType, dispatch} = this.state;
+    var {pomodoro, dispatch} = this.props;
 
     var renderClock = () => {
-      if(this.state.sessionType === 'work'){
-        return <Clock totalSeconds={workCount} sessionType={sessionType}/>
-      }else if(this.state.sessionType ==='break'){
-        return <Clock totalSeconds={breakCount} sessionType={sessionType}/>
+      if(pomodoro.sessionType === 'work'){
+        return <Clock totalSeconds={pomodoro.workCount} sessionType={pomodoro.sessionType}/>
+      }else if(pomodoro.sessionType ==='break'){
+        return <Clock totalSeconds={pomodoro.breakCount} sessionType={pomodoro.sessionType}/>
       }
     };
 

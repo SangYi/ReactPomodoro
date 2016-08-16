@@ -6,7 +6,10 @@ module.exports = {
   entry: [
     'script!jquery/dist/jquery.min.js',
     'script!foundation-sites/dist/foundation.min.js',
-    './app/app.jsx'
+    './app/app.jsx',
+    //webpack-dev-server
+    // 'webpack-dev-server/client?http://0.0.0.0:81',
+    // 'webpack/hot/only-dev-server',
   ],
   externals: {
     jquery: 'jQuery'
@@ -15,7 +18,9 @@ module.exports = {
     new webpack.ProvidePlugin({
       '$': 'jquery',
       'jQuery': 'jquery'
-    })
+    }),
+    //hot loading
+    new webpack.HotModuleReplacementPlugin()
   ],
   output: {
     path: path.join(__dirname, "/public/"),

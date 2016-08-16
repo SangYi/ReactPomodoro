@@ -1,11 +1,12 @@
 export var setStatus = (status) => {
   return {
     type: 'SET_STATUS',
-    status
+    status: status
   };
 };
 
 export var setSessionWork = (sessionType) => {
+
   return {
     type: 'SET_SESSION_WORK',
     sessionType

@@ -1,4 +1,537 @@
 /******/ (function(modules) { // webpackBootstrap
+/******/ 	var parentHotUpdateCallback = this["webpackHotUpdate"];
+/******/ 	this["webpackHotUpdate"] = 
+/******/ 	function webpackHotUpdateCallback(chunkId, moreModules) { // eslint-disable-line no-unused-vars
+/******/ 		hotAddUpdateChunk(chunkId, moreModules);
+/******/ 		if(parentHotUpdateCallback) parentHotUpdateCallback(chunkId, moreModules);
+/******/ 	}
+/******/ 	
+/******/ 	function hotDownloadUpdateChunk(chunkId) { // eslint-disable-line no-unused-vars
+/******/ 		var head = document.getElementsByTagName("head")[0];
+/******/ 		var script = document.createElement("script");
+/******/ 		script.type = "text/javascript";
+/******/ 		script.charset = "utf-8";
+/******/ 		script.src = __webpack_require__.p + "" + chunkId + "." + hotCurrentHash + ".hot-update.js";
+/******/ 		head.appendChild(script);
+/******/ 	}
+/******/ 	
+/******/ 	function hotDownloadManifest(callback) { // eslint-disable-line no-unused-vars
+/******/ 		if(typeof XMLHttpRequest === "undefined")
+/******/ 			return callback(new Error("No browser support"));
+/******/ 		try {
+/******/ 			var request = new XMLHttpRequest();
+/******/ 			var requestPath = __webpack_require__.p + "" + hotCurrentHash + ".hot-update.json";
+/******/ 			request.open("GET", requestPath, true);
+/******/ 			request.timeout = 10000;
+/******/ 			request.send(null);
+/******/ 		} catch(err) {
+/******/ 			return callback(err);
+/******/ 		}
+/******/ 		request.onreadystatechange = function() {
+/******/ 			if(request.readyState !== 4) return;
+/******/ 			if(request.status === 0) {
+/******/ 				// timeout
+/******/ 				callback(new Error("Manifest request to " + requestPath + " timed out."));
+/******/ 			} else if(request.status === 404) {
+/******/ 				// no update available
+/******/ 				callback();
+/******/ 			} else if(request.status !== 200 && request.status !== 304) {
+/******/ 				// other failure
+/******/ 				callback(new Error("Manifest request to " + requestPath + " failed."));
+/******/ 			} else {
+/******/ 				// success
+/******/ 				try {
+/******/ 					var update = JSON.parse(request.responseText);
+/******/ 				} catch(e) {
+/******/ 					callback(e);
+/******/ 					return;
+/******/ 				}
+/******/ 				callback(null, update);
+/******/ 			}
+/******/ 		};
+/******/ 	}
+
+/******/ 	
+/******/ 	
+/******/ 	// Copied from https://github.com/facebook/react/blob/bef45b0/src/shared/utils/canDefineProperty.js
+/******/ 	var canDefineProperty = false;
+/******/ 	try {
+/******/ 		Object.defineProperty({}, "x", {
+/******/ 			get: function() {}
+/******/ 		});
+/******/ 		canDefineProperty = true;
+/******/ 	} catch(x) {
+/******/ 		// IE will fail on defineProperty
+/******/ 	}
+/******/ 	
+/******/ 	var hotApplyOnUpdate = true;
+/******/ 	var hotCurrentHash = "a61d3b24ad1a073767e5"; // eslint-disable-line no-unused-vars
+/******/ 	var hotCurrentModuleData = {};
+/******/ 	var hotCurrentParents = []; // eslint-disable-line no-unused-vars
+/******/ 	
+/******/ 	function hotCreateRequire(moduleId) { // eslint-disable-line no-unused-vars
+/******/ 		var me = installedModules[moduleId];
+/******/ 		if(!me) return __webpack_require__;
+/******/ 		var fn = function(request) {
+/******/ 			if(me.hot.active) {
+/******/ 				if(installedModules[request]) {
+/******/ 					if(installedModules[request].parents.indexOf(moduleId) < 0)
+/******/ 						installedModules[request].parents.push(moduleId);
+/******/ 					if(me.children.indexOf(request) < 0)
+/******/ 						me.children.push(request);
+/******/ 				} else hotCurrentParents = [moduleId];
+/******/ 			} else {
+/******/ 				console.warn("[HMR] unexpected require(" + request + ") from disposed module " + moduleId);
+/******/ 				hotCurrentParents = [];
+/******/ 			}
+/******/ 			return __webpack_require__(request);
+/******/ 		};
+/******/ 		for(var name in __webpack_require__) {
+/******/ 			if(Object.prototype.hasOwnProperty.call(__webpack_require__, name)) {
+/******/ 				if(canDefineProperty) {
+/******/ 					Object.defineProperty(fn, name, (function(name) {
+/******/ 						return {
+/******/ 							configurable: true,
+/******/ 							enumerable: true,
+/******/ 							get: function() {
+/******/ 								return __webpack_require__[name];
+/******/ 							},
+/******/ 							set: function(value) {
+/******/ 								__webpack_require__[name] = value;
+/******/ 							}
+/******/ 						};
+/******/ 					}(name)));
+/******/ 				} else {
+/******/ 					fn[name] = __webpack_require__[name];
+/******/ 				}
+/******/ 			}
+/******/ 		}
+/******/ 	
+/******/ 		function ensure(chunkId, callback) {
+/******/ 			if(hotStatus === "ready")
+/******/ 				hotSetStatus("prepare");
+/******/ 			hotChunksLoading++;
+/******/ 			__webpack_require__.e(chunkId, function() {
+/******/ 				try {
+/******/ 					callback.call(null, fn);
+/******/ 				} finally {
+/******/ 					finishChunkLoading();
+/******/ 				}
+/******/ 	
+/******/ 				function finishChunkLoading() {
+/******/ 					hotChunksLoading--;
+/******/ 					if(hotStatus === "prepare") {
+/******/ 						if(!hotWaitingFilesMap[chunkId]) {
+/******/ 							hotEnsureUpdateChunk(chunkId);
+/******/ 						}
+/******/ 						if(hotChunksLoading === 0 && hotWaitingFiles === 0) {
+/******/ 							hotUpdateDownloaded();
+/******/ 						}
+/******/ 					}
+/******/ 				}
+/******/ 			});
+/******/ 		}
+/******/ 		if(canDefineProperty) {
+/******/ 			Object.defineProperty(fn, "e", {
+/******/ 				enumerable: true,
+/******/ 				value: ensure
+/******/ 			});
+/******/ 		} else {
+/******/ 			fn.e = ensure;
+/******/ 		}
+/******/ 		return fn;
+/******/ 	}
+/******/ 	
+/******/ 	function hotCreateModule(moduleId) { // eslint-disable-line no-unused-vars
+/******/ 		var hot = {
+/******/ 			// private stuff
+/******/ 			_acceptedDependencies: {},
+/******/ 			_declinedDependencies: {},
+/******/ 			_selfAccepted: false,
+/******/ 			_selfDeclined: false,
+/******/ 			_disposeHandlers: [],
+/******/ 	
+/******/ 			// Module API
+/******/ 			active: true,
+/******/ 			accept: function(dep, callback) {
+/******/ 				if(typeof dep === "undefined")
+/******/ 					hot._selfAccepted = true;
+/******/ 				else if(typeof dep === "function")
+/******/ 					hot._selfAccepted = dep;
+/******/ 				else if(typeof dep === "object")
+/******/ 					for(var i = 0; i < dep.length; i++)
+/******/ 						hot._acceptedDependencies[dep[i]] = callback;
+/******/ 				else
+/******/ 					hot._acceptedDependencies[dep] = callback;
+/******/ 			},
+/******/ 			decline: function(dep) {
+/******/ 				if(typeof dep === "undefined")
+/******/ 					hot._selfDeclined = true;
+/******/ 				else if(typeof dep === "number")
+/******/ 					hot._declinedDependencies[dep] = true;
+/******/ 				else
+/******/ 					for(var i = 0; i < dep.length; i++)
+/******/ 						hot._declinedDependencies[dep[i]] = true;
+/******/ 			},
+/******/ 			dispose: function(callback) {
+/******/ 				hot._disposeHandlers.push(callback);
+/******/ 			},
+/******/ 			addDisposeHandler: function(callback) {
+/******/ 				hot._disposeHandlers.push(callback);
+/******/ 			},
+/******/ 			removeDisposeHandler: function(callback) {
+/******/ 				var idx = hot._disposeHandlers.indexOf(callback);
+/******/ 				if(idx >= 0) hot._disposeHandlers.splice(idx, 1);
+/******/ 			},
+/******/ 	
+/******/ 			// Management API
+/******/ 			check: hotCheck,
+/******/ 			apply: hotApply,
+/******/ 			status: function(l) {
+/******/ 				if(!l) return hotStatus;
+/******/ 				hotStatusHandlers.push(l);
+/******/ 			},
+/******/ 			addStatusHandler: function(l) {
+/******/ 				hotStatusHandlers.push(l);
+/******/ 			},
+/******/ 			removeStatusHandler: function(l) {
+/******/ 				var idx = hotStatusHandlers.indexOf(l);
+/******/ 				if(idx >= 0) hotStatusHandlers.splice(idx, 1);
+/******/ 			},
+/******/ 	
+/******/ 			//inherit from previous dispose call
+/******/ 			data: hotCurrentModuleData[moduleId]
+/******/ 		};
+/******/ 		return hot;
+/******/ 	}
+/******/ 	
+/******/ 	var hotStatusHandlers = [];
+/******/ 	var hotStatus = "idle";
+/******/ 	
+/******/ 	function hotSetStatus(newStatus) {
+/******/ 		hotStatus = newStatus;
+/******/ 		for(var i = 0; i < hotStatusHandlers.length; i++)
+/******/ 			hotStatusHandlers[i].call(null, newStatus);
+/******/ 	}
+/******/ 	
+/******/ 	// while downloading
+/******/ 	var hotWaitingFiles = 0;
+/******/ 	var hotChunksLoading = 0;
+/******/ 	var hotWaitingFilesMap = {};
+/******/ 	var hotRequestedFilesMap = {};
+/******/ 	var hotAvailibleFilesMap = {};
+/******/ 	var hotCallback;
+/******/ 	
+/******/ 	// The update info
+/******/ 	var hotUpdate, hotUpdateNewHash;
+/******/ 	
+/******/ 	function toModuleId(id) {
+/******/ 		var isNumber = (+id) + "" === id;
+/******/ 		return isNumber ? +id : id;
+/******/ 	}
+/******/ 	
+/******/ 	function hotCheck(apply, callback) {
+/******/ 		if(hotStatus !== "idle") throw new Error("check() is only allowed in idle status");
+/******/ 		if(typeof apply === "function") {
+/******/ 			hotApplyOnUpdate = false;
+/******/ 			callback = apply;
+/******/ 		} else {
+/******/ 			hotApplyOnUpdate = apply;
+/******/ 			callback = callback || function(err) {
+/******/ 				if(err) throw err;
+/******/ 			};
+/******/ 		}
+/******/ 		hotSetStatus("check");
+/******/ 		hotDownloadManifest(function(err, update) {
+/******/ 			if(err) return callback(err);
+/******/ 			if(!update) {
+/******/ 				hotSetStatus("idle");
+/******/ 				callback(null, null);
+/******/ 				return;
+/******/ 			}
+/******/ 	
+/******/ 			hotRequestedFilesMap = {};
+/******/ 			hotAvailibleFilesMap = {};
+/******/ 			hotWaitingFilesMap = {};
+/******/ 			for(var i = 0; i < update.c.length; i++)
+/******/ 				hotAvailibleFilesMap[update.c[i]] = true;
+/******/ 			hotUpdateNewHash = update.h;
+/******/ 	
+/******/ 			hotSetStatus("prepare");
+/******/ 			hotCallback = callback;
+/******/ 			hotUpdate = {};
+/******/ 			var chunkId = 0;
+/******/ 			{ // eslint-disable-line no-lone-blocks
+/******/ 				/*globals chunkId */
+/******/ 				hotEnsureUpdateChunk(chunkId);
+/******/ 			}
+/******/ 			if(hotStatus === "prepare" && hotChunksLoading === 0 && hotWaitingFiles === 0) {
+/******/ 				hotUpdateDownloaded();
+/******/ 			}
+/******/ 		});
+/******/ 	}
+/******/ 	
+/******/ 	function hotAddUpdateChunk(chunkId, moreModules) { // eslint-disable-line no-unused-vars
+/******/ 		if(!hotAvailibleFilesMap[chunkId] || !hotRequestedFilesMap[chunkId])
+/******/ 			return;
+/******/ 		hotRequestedFilesMap[chunkId] = false;
+/******/ 		for(var moduleId in moreModules) {
+/******/ 			if(Object.prototype.hasOwnProperty.call(moreModules, moduleId)) {
+/******/ 				hotUpdate[moduleId] = moreModules[moduleId];
+/******/ 			}
+/******/ 		}
+/******/ 		if(--hotWaitingFiles === 0 && hotChunksLoading === 0) {
+/******/ 			hotUpdateDownloaded();
+/******/ 		}
+/******/ 	}
+/******/ 	
+/******/ 	function hotEnsureUpdateChunk(chunkId) {
+/******/ 		if(!hotAvailibleFilesMap[chunkId]) {
+/******/ 			hotWaitingFilesMap[chunkId] = true;
+/******/ 		} else {
+/******/ 			hotRequestedFilesMap[chunkId] = true;
+/******/ 			hotWaitingFiles++;
+/******/ 			hotDownloadUpdateChunk(chunkId);
+/******/ 		}
+/******/ 	}
+/******/ 	
+/******/ 	function hotUpdateDownloaded() {
+/******/ 		hotSetStatus("ready");
+/******/ 		var callback = hotCallback;
+/******/ 		hotCallback = null;
+/******/ 		if(!callback) return;
+/******/ 		if(hotApplyOnUpdate) {
+/******/ 			hotApply(hotApplyOnUpdate, callback);
+/******/ 		} else {
+/******/ 			var outdatedModules = [];
+/******/ 			for(var id in hotUpdate) {
+/******/ 				if(Object.prototype.hasOwnProperty.call(hotUpdate, id)) {
+/******/ 					outdatedModules.push(toModuleId(id));
+/******/ 				}
+/******/ 			}
+/******/ 			callback(null, outdatedModules);
+/******/ 		}
+/******/ 	}
+/******/ 	
+/******/ 	function hotApply(options, callback) {
+/******/ 		if(hotStatus !== "ready") throw new Error("apply() is only allowed in ready status");
+/******/ 		if(typeof options === "function") {
+/******/ 			callback = options;
+/******/ 			options = {};
+/******/ 		} else if(options && typeof options === "object") {
+/******/ 			callback = callback || function(err) {
+/******/ 				if(err) throw err;
+/******/ 			};
+/******/ 		} else {
+/******/ 			options = {};
+/******/ 			callback = callback || function(err) {
+/******/ 				if(err) throw err;
+/******/ 			};
+/******/ 		}
+/******/ 	
+/******/ 		function getAffectedStuff(module) {
+/******/ 			var outdatedModules = [module];
+/******/ 			var outdatedDependencies = {};
+/******/ 	
+/******/ 			var queue = outdatedModules.slice();
+/******/ 			while(queue.length > 0) {
+/******/ 				var moduleId = queue.pop();
+/******/ 				var module = installedModules[moduleId];
+/******/ 				if(!module || module.hot._selfAccepted)
+/******/ 					continue;
+/******/ 				if(module.hot._selfDeclined) {
+/******/ 					return new Error("Aborted because of self decline: " + moduleId);
+/******/ 				}
+/******/ 				if(moduleId === 0) {
+/******/ 					return;
+/******/ 				}
+/******/ 				for(var i = 0; i < module.parents.length; i++) {
+/******/ 					var parentId = module.parents[i];
+/******/ 					var parent = installedModules[parentId];
+/******/ 					if(parent.hot._declinedDependencies[moduleId]) {
+/******/ 						return new Error("Aborted because of declined dependency: " + moduleId + " in " + parentId);
+/******/ 					}
+/******/ 					if(outdatedModules.indexOf(parentId) >= 0) continue;
+/******/ 					if(parent.hot._acceptedDependencies[moduleId]) {
+/******/ 						if(!outdatedDependencies[parentId])
+/******/ 							outdatedDependencies[parentId] = [];
+/******/ 						addAllToSet(outdatedDependencies[parentId], [moduleId]);
+/******/ 						continue;
+/******/ 					}
+/******/ 					delete outdatedDependencies[parentId];
+/******/ 					outdatedModules.push(parentId);
+/******/ 					queue.push(parentId);
+/******/ 				}
+/******/ 			}
+/******/ 	
+/******/ 			return [outdatedModules, outdatedDependencies];
+/******/ 		}
+/******/ 	
+/******/ 		function addAllToSet(a, b) {
+/******/ 			for(var i = 0; i < b.length; i++) {
+/******/ 				var item = b[i];
+/******/ 				if(a.indexOf(item) < 0)
+/******/ 					a.push(item);
+/******/ 			}
+/******/ 		}
+/******/ 	
+/******/ 		// at begin all updates modules are outdated
+/******/ 		// the "outdated" status can propagate to parents if they don't accept the children
+/******/ 		var outdatedDependencies = {};
+/******/ 		var outdatedModules = [];
+/******/ 		var appliedUpdate = {};
+/******/ 		for(var id in hotUpdate) {
+/******/ 			if(Object.prototype.hasOwnProperty.call(hotUpdate, id)) {
+/******/ 				var moduleId = toModuleId(id);
+/******/ 				var result = getAffectedStuff(moduleId);
+/******/ 				if(!result) {
+/******/ 					if(options.ignoreUnaccepted)
+/******/ 						continue;
+/******/ 					hotSetStatus("abort");
+/******/ 					return callback(new Error("Aborted because " + moduleId + " is not accepted"));
+/******/ 				}
+/******/ 				if(result instanceof Error) {
+/******/ 					hotSetStatus("abort");
+/******/ 					return callback(result);
+/******/ 				}
+/******/ 				appliedUpdate[moduleId] = hotUpdate[moduleId];
+/******/ 				addAllToSet(outdatedModules, result[0]);
+/******/ 				for(var moduleId in result[1]) {
+/******/ 					if(Object.prototype.hasOwnProperty.call(result[1], moduleId)) {
+/******/ 						if(!outdatedDependencies[moduleId])
+/******/ 							outdatedDependencies[moduleId] = [];
+/******/ 						addAllToSet(outdatedDependencies[moduleId], result[1][moduleId]);
+/******/ 					}
+/******/ 				}
+/******/ 			}
+/******/ 		}
+/******/ 	
+/******/ 		// Store self accepted outdated modules to require them later by the module system
+/******/ 		var outdatedSelfAcceptedModules = [];
+/******/ 		for(var i = 0; i < outdatedModules.length; i++) {
+/******/ 			var moduleId = outdatedModules[i];
+/******/ 			if(installedModules[moduleId] && installedModules[moduleId].hot._selfAccepted)
+/******/ 				outdatedSelfAcceptedModules.push({
+/******/ 					module: moduleId,
+/******/ 					errorHandler: installedModules[moduleId].hot._selfAccepted
+/******/ 				});
+/******/ 		}
+/******/ 	
+/******/ 		// Now in "dispose" phase
+/******/ 		hotSetStatus("dispose");
+/******/ 		var queue = outdatedModules.slice();
+/******/ 		while(queue.length > 0) {
+/******/ 			var moduleId = queue.pop();
+/******/ 			var module = installedModules[moduleId];
+/******/ 			if(!module) continue;
+/******/ 	
+/******/ 			var data = {};
+/******/ 	
+/******/ 			// Call dispose handlers
+/******/ 			var disposeHandlers = module.hot._disposeHandlers;
+/******/ 			for(var j = 0; j < disposeHandlers.length; j++) {
+/******/ 				var cb = disposeHandlers[j];
+/******/ 				cb(data);
+/******/ 			}
+/******/ 			hotCurrentModuleData[moduleId] = data;
+/******/ 	
+/******/ 			// disable module (this disables requires from this module)
+/******/ 			module.hot.active = false;
+/******/ 	
+/******/ 			// remove module from cache
+/******/ 			delete installedModules[moduleId];
+/******/ 	
+/******/ 			// remove "parents" references from all children
+/******/ 			for(var j = 0; j < module.children.length; j++) {
+/******/ 				var child = installedModules[module.children[j]];
+/******/ 				if(!child) continue;
+/******/ 				var idx = child.parents.indexOf(moduleId);
+/******/ 				if(idx >= 0) {
+/******/ 					child.parents.splice(idx, 1);
+/******/ 				}
+/******/ 			}
+/******/ 		}
+/******/ 	
+/******/ 		// remove outdated dependency from module children
+/******/ 		for(var moduleId in outdatedDependencies) {
+/******/ 			if(Object.prototype.hasOwnProperty.call(outdatedDependencies, moduleId)) {
+/******/ 				var module = installedModules[moduleId];
+/******/ 				var moduleOutdatedDependencies = outdatedDependencies[moduleId];
+/******/ 				for(var j = 0; j < moduleOutdatedDependencies.length; j++) {
+/******/ 					var dependency = moduleOutdatedDependencies[j];
+/******/ 					var idx = module.children.indexOf(dependency);
+/******/ 					if(idx >= 0) module.children.splice(idx, 1);
+/******/ 				}
+/******/ 			}
+/******/ 		}
+/******/ 	
+/******/ 		// Not in "apply" phase
+/******/ 		hotSetStatus("apply");
+/******/ 	
+/******/ 		hotCurrentHash = hotUpdateNewHash;
+/******/ 	
+/******/ 		// insert new code
+/******/ 		for(var moduleId in appliedUpdate) {
+/******/ 			if(Object.prototype.hasOwnProperty.call(appliedUpdate, moduleId)) {
+/******/ 				modules[moduleId] = appliedUpdate[moduleId];
+/******/ 			}
+/******/ 		}
+/******/ 	
+/******/ 		// call accept handlers
+/******/ 		var error = null;
+/******/ 		for(var moduleId in outdatedDependencies) {
+/******/ 			if(Object.prototype.hasOwnProperty.call(outdatedDependencies, moduleId)) {
+/******/ 				var module = installedModules[moduleId];
+/******/ 				var moduleOutdatedDependencies = outdatedDependencies[moduleId];
+/******/ 				var callbacks = [];
+/******/ 				for(var i = 0; i < moduleOutdatedDependencies.length; i++) {
+/******/ 					var dependency = moduleOutdatedDependencies[i];
+/******/ 					var cb = module.hot._acceptedDependencies[dependency];
+/******/ 					if(callbacks.indexOf(cb) >= 0) continue;
+/******/ 					callbacks.push(cb);
+/******/ 				}
+/******/ 				for(var i = 0; i < callbacks.length; i++) {
+/******/ 					var cb = callbacks[i];
+/******/ 					try {
+/******/ 						cb(outdatedDependencies);
+/******/ 					} catch(err) {
+/******/ 						if(!error)
+/******/ 							error = err;
+/******/ 					}
+/******/ 				}
+/******/ 			}
+/******/ 		}
+/******/ 	
+/******/ 		// Load self accepted modules
+/******/ 		for(var i = 0; i < outdatedSelfAcceptedModules.length; i++) {
+/******/ 			var item = outdatedSelfAcceptedModules[i];
+/******/ 			var moduleId = item.module;
+/******/ 			hotCurrentParents = [moduleId];
+/******/ 			try {
+/******/ 				__webpack_require__(moduleId);
+/******/ 			} catch(err) {
+/******/ 				if(typeof item.errorHandler === "function") {
+/******/ 					try {
+/******/ 						item.errorHandler(err);
+/******/ 					} catch(err) {
+/******/ 						if(!error)
+/******/ 							error = err;
+/******/ 					}
+/******/ 				} else if(!error)
+/******/ 					error = err;
+/******/ 			}
+/******/ 		}
+/******/ 	
+/******/ 		// handle errors in accept handlers and self accepted module load
+/******/ 		if(error) {
+/******/ 			hotSetStatus("fail");
+/******/ 			return callback(error);
+/******/ 		}
+/******/ 	
+/******/ 		hotSetStatus("idle");
+/******/ 		callback(null, outdatedModules);
+/******/ 	}
+
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
 
@@ -13,11 +546,14 @@
 /******/ 		var module = installedModules[moduleId] = {
 /******/ 			exports: {},
 /******/ 			id: moduleId,
-/******/ 			loaded: false
+/******/ 			loaded: false,
+/******/ 			hot: hotCreateModule(moduleId),
+/******/ 			parents: hotCurrentParents,
+/******/ 			children: []
 /******/ 		};
 
 /******/ 		// Execute the module function
-/******/ 		modules[moduleId].call(module.exports, module, module.exports, __webpack_require__);
+/******/ 		modules[moduleId].call(module.exports, module, module.exports, hotCreateRequire(moduleId));
 
 /******/ 		// Flag the module as loaded
 /******/ 		module.loaded = true;
@@ -36,8 +572,11 @@
 /******/ 	// __webpack_public_path__
 /******/ 	__webpack_require__.p = "";
 
+/******/ 	// __webpack_hash__
+/******/ 	__webpack_require__.h = function() { return hotCurrentHash; };
+
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(0);
+/******/ 	return hotCreateRequire(0)(0);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -1535,49 +2074,49 @@
 /* 248 */
 /***/ function(module, exports, __webpack_require__) {
 
-	eval("'use strict';\n\nfunction _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError(\"Cannot call a class as a function\"); } }\n\nfunction _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError(\"this hasn't been initialised - super() hasn't been called\"); } return call && (typeof call === \"object\" || typeof call === \"function\") ? call : self; }\n\nfunction _inherits(subClass, superClass) { if (typeof superClass !== \"function\" && superClass !== null) { throw new TypeError(\"Super expression must either be null or a function, not \" + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }\n\n// import React from 'react';\nvar React = __webpack_require__(8);\n\nvar Timer = __webpack_require__(249);\n\nvar PomodoroApp = function (_React$Component) {\n  _inherits(PomodoroApp, _React$Component);\n\n  function PomodoroApp(props) {\n    _classCallCheck(this, PomodoroApp);\n\n    var _this = _possibleConstructorReturn(this, Object.getPrototypeOf(PomodoroApp).call(this, props));\n\n    _this.render = function () {\n\n      return React.createElement(\n        'div',\n        { className: 'row' },\n        React.createElement(\n          'div',\n          { className: 'column small-centered medium-6 large-4' },\n          React.createElement(Timer, null)\n        )\n      );\n    };\n\n    _this.state = {\n      completed: false\n    };\n\n    return _this;\n  }\n\n  return PomodoroApp;\n}(React.Component);\n\n// var PomodoroApp = React.createClass({\n//   render: function(){\n//     return(\n//       <div>\n//         <p>Pomo from app</p>\n//       </div>\n//     )\n//   }\n// });\n\nmodule.exports = PomodoroApp;//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiMjQ4LmpzIiwic291cmNlcyI6WyJ3ZWJwYWNrOi8vL2FwcC9jb21wb25lbnRzL1BvbW9kb3JvQXBwLmpzeD80MzQ5Il0sInNvdXJjZXNDb250ZW50IjpbIi8vIGltcG9ydCBSZWFjdCBmcm9tICdyZWFjdCc7XHJcbmxldCBSZWFjdCA9IHJlcXVpcmUoJ3JlYWN0Jyk7XHJcblxyXG5sZXQgVGltZXIgPSByZXF1aXJlKCdUaW1lcicpO1xyXG5cclxuY2xhc3MgUG9tb2Rvcm9BcHAgZXh0ZW5kcyBSZWFjdC5Db21wb25lbnQge1xyXG4gIGNvbnN0cnVjdG9yKHByb3BzKXtcclxuICAgICAgc3VwZXIocHJvcHMpO1xyXG4gICAgICB0aGlzLnN0YXRlID0ge1xyXG4gICAgICAgIGNvbXBsZXRlZDogZmFsc2VcclxuICAgICAgfTtcclxuXHJcblxyXG4gIH1cclxuXHJcblxyXG4gIHJlbmRlciA9ICgpID0+IHtcclxuXHJcbiAgICByZXR1cm4gKFxyXG4gICAgICA8ZGl2IGNsYXNzTmFtZT1cInJvd1wiPlxyXG4gICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiY29sdW1uIHNtYWxsLWNlbnRlcmVkIG1lZGl1bS02IGxhcmdlLTRcIj5cclxuICAgICAgICAgIDxUaW1lciAvPlxyXG4gICAgICAgIDwvZGl2PlxyXG4gICAgICA8L2Rpdj5cclxuICAgIClcclxuICB9XHJcbn1cclxuXHJcbi8vIHZhciBQb21vZG9yb0FwcCA9IFJlYWN0LmNyZWF0ZUNsYXNzKHtcclxuLy8gICByZW5kZXI6IGZ1bmN0aW9uKCl7XHJcbi8vICAgICByZXR1cm4oXHJcbi8vICAgICAgIDxkaXY+XHJcbi8vICAgICAgICAgPHA+UG9tbyBmcm9tIGFwcDwvcD5cclxuLy8gICAgICAgPC9kaXY+XHJcbi8vICAgICApXHJcbi8vICAgfVxyXG4vLyB9KTtcclxuXHJcbm1vZHVsZS5leHBvcnRzID0gUG9tb2Rvcm9BcHA7XHJcblxuXG5cbi8qKiBXRUJQQUNLIEZPT1RFUiAqKlxuICoqIGFwcC9jb21wb25lbnRzL1BvbW9kb3JvQXBwLmpzeFxuICoqLyJdLCJtYXBwaW5ncyI6Ijs7Ozs7Ozs7O0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTs7O0FBQ0E7QUFBQTtBQUNBO0FBREE7QUFDQTtBQURBO0FBQ0E7QUFXQTtBQUNBO0FBQUE7QUFDQTtBQUFBO0FBQUE7QUFDQTtBQURBO0FBREE7QUFNQTtBQUNBO0FBbEJBO0FBQ0E7QUFEQTtBQUNBO0FBSEE7QUFPQTtBQUNBOztBQVRBO0FBQ0E7Ozs7Ozs7Ozs7O0FBZ0NBIiwic291cmNlUm9vdCI6IiJ9");
+	eval("'use strict';\n\nvar _Timer = __webpack_require__(249);\n\nvar _Timer2 = _interopRequireDefault(_Timer);\n\nfunction _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }\n\nfunction _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError(\"Cannot call a class as a function\"); } }\n\nfunction _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError(\"this hasn't been initialised - super() hasn't been called\"); } return call && (typeof call === \"object\" || typeof call === \"function\") ? call : self; }\n\nfunction _inherits(subClass, superClass) { if (typeof superClass !== \"function\" && superClass !== null) { throw new TypeError(\"Super expression must either be null or a function, not \" + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }\n\n// import React from 'react';\nvar React = __webpack_require__(8);\n\n// let Timer = require('Timer');\n\nvar PomodoroApp = function (_React$Component) {\n  _inherits(PomodoroApp, _React$Component);\n\n  function PomodoroApp(props) {\n    _classCallCheck(this, PomodoroApp);\n\n    var _this = _possibleConstructorReturn(this, Object.getPrototypeOf(PomodoroApp).call(this, props));\n\n    _this.render = function () {\n\n      return React.createElement(\n        'div',\n        { className: 'row' },\n        React.createElement(\n          'div',\n          { className: 'column small-centered medium-6 large-4' },\n          React.createElement(_Timer2.default, null)\n        )\n      );\n    };\n\n    return _this;\n  }\n\n  return PomodoroApp;\n}(React.Component);\n\n// var PomodoroApp = React.createClass({\n//   render: function(){\n//     return(\n//       <div>\n//         <p>Pomo from app</p>\n//       </div>\n//     )\n//   }\n// });\n\nmodule.exports = PomodoroApp;//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiMjQ4LmpzIiwic291cmNlcyI6WyJ3ZWJwYWNrOi8vL2FwcC9jb21wb25lbnRzL1BvbW9kb3JvQXBwLmpzeD80MzQ5Il0sInNvdXJjZXNDb250ZW50IjpbIi8vIGltcG9ydCBSZWFjdCBmcm9tICdyZWFjdCc7XHJcbmxldCBSZWFjdCA9IHJlcXVpcmUoJ3JlYWN0Jyk7XHJcblxyXG4vLyBsZXQgVGltZXIgPSByZXF1aXJlKCdUaW1lcicpO1xyXG5pbXBvcnQgVGltZXIgZnJvbSAnVGltZXInO1xyXG5cclxuY2xhc3MgUG9tb2Rvcm9BcHAgZXh0ZW5kcyBSZWFjdC5Db21wb25lbnQge1xyXG4gIGNvbnN0cnVjdG9yKHByb3BzKXtcclxuICAgICAgc3VwZXIocHJvcHMpO1xyXG4gICAgICBcclxuICB9XHJcblxyXG5cclxuICByZW5kZXIgPSAoKSA9PiB7XHJcblxyXG4gICAgcmV0dXJuIChcclxuICAgICAgPGRpdiBjbGFzc05hbWU9XCJyb3dcIj5cclxuICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cImNvbHVtbiBzbWFsbC1jZW50ZXJlZCBtZWRpdW0tNiBsYXJnZS00XCI+XHJcbiAgICAgICAgICA8VGltZXIgLz5cclxuICAgICAgICA8L2Rpdj5cclxuICAgICAgPC9kaXY+XHJcbiAgICApXHJcbiAgfVxyXG59XHJcblxyXG4vLyB2YXIgUG9tb2Rvcm9BcHAgPSBSZWFjdC5jcmVhdGVDbGFzcyh7XHJcbi8vICAgcmVuZGVyOiBmdW5jdGlvbigpe1xyXG4vLyAgICAgcmV0dXJuKFxyXG4vLyAgICAgICA8ZGl2PlxyXG4vLyAgICAgICAgIDxwPlBvbW8gZnJvbSBhcHA8L3A+XHJcbi8vICAgICAgIDwvZGl2PlxyXG4vLyAgICAgKVxyXG4vLyAgIH1cclxuLy8gfSk7XHJcblxyXG5tb2R1bGUuZXhwb3J0cyA9IFBvbW9kb3JvQXBwO1xyXG5cblxuXG4vKiogV0VCUEFDSyBGT09URVIgKipcbiAqKiBhcHAvY29tcG9uZW50cy9Qb21vZG9yb0FwcC5qc3hcbiAqKi8iXSwibWFwcGluZ3MiOiI7O0FBSUE7QUFDQTs7Ozs7Ozs7Ozs7O0FBSkE7QUFDQTs7O0FBSUE7OztBQUNBO0FBQUE7QUFDQTtBQURBO0FBQ0E7QUFEQTtBQUNBO0FBT0E7QUFDQTtBQUFBO0FBQ0E7QUFBQTtBQUFBO0FBQ0E7QUFEQTtBQURBO0FBTUE7QUFDQTtBQWhCQTtBQUdBO0FBQ0E7O0FBTEE7QUFDQTs7Ozs7Ozs7Ozs7QUE0QkEiLCJzb3VyY2VSb290IjoiIn0=");
 
 /***/ },
 /* 249 */
 /***/ function(module, exports, __webpack_require__) {
 
-	eval("'use strict';\n\nvar _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };\n\nvar React = __webpack_require__(8);\n\nvar _require = __webpack_require__(166);\n\nvar connect = _require.connect;\n\n\nvar Clock = __webpack_require__(250);\nvar Controls = __webpack_require__(251);\n\nvar Timer = React.createClass({\n  displayName: 'Timer',\n\n  getInitialState: function getInitialState() {\n    return {\n      countdownStatus: 'stopped',\n      breakSession: 5,\n      workSession: 25,\n      breakCount: 300,\n      workCount: 1500,\n      sessionType: 'work'\n\n    };\n  },\n\n  componentDidUpdate: function componentDidUpdate(prevProps, prevState) {\n    if (this.state.countdownStatus !== prevState.countdownStatus) {\n      switch (this.state.countdownStatus) {\n        case 'started':\n          this.startTimer();\n          break;\n        case 'stopped':\n          this.setState({\n            breakCount: this.state.breakSession * 60,\n            workCount: this.state.workSession * 60,\n            sessionType: 'work'\n          });\n        case 'paused':\n          clearInterval(this.timer);\n          this.timer = undefined;\n          break;\n      }\n    }\n  },\n\n  // componentWillUnmount: function(){\n  //\n  //   clearInterval(this.timer);\n  //   this.timer = undefined;\n  // },\n\n  startTimer: function startTimer() {\n    var _this = this;\n\n    this.timer = setInterval(function () {\n      var sessionType = _this.state.sessionType;\n\n\n      if (sessionType === \"work\") {\n        var newCount = _this.state.workCount - 1;\n        _this.setState({\n          workCount: newCount >= 0 ? newCount : 0\n        });\n\n        if (newCount === 0) {\n          _this.setState({ sessionType: 'break', workCount: _this.state.workSession * 60 });\n        }\n      }\n\n      if (sessionType === \"break\") {\n        var newCount = _this.state.breakCount - 1;\n        _this.setState({\n          breakCount: newCount >= 0 ? newCount : 0\n        });\n\n        if (newCount === 0) {\n          _this.setState({ sessionType: 'work', breakCount: _this.state.breakSession * 60 });\n        }\n      }\n    }, 1000);\n  },\n\n\n  handleSetCountdown: function handleSetCountdown(seconds) {\n    this.setState({\n      count: seconds,\n      countdownStatus: 'started'\n    });\n  },\n\n  handleStatusChange: function handleStatusChange(newStatus) {\n    this.setState({\n      countdownStatus: newStatus\n    });\n  },\n\n  handleBreakChange: function handleBreakChange(newBreakTime) {\n    if (newBreakTime > 0) {\n      this.setState({\n        breakSession: newBreakTime,\n        breakCount: newBreakTime * 60\n      });\n    }\n  },\n\n  handleWorkChange: function handleWorkChange(newWorkTime) {\n    if (newWorkTime) {\n      this.setState({\n        workSession: newWorkTime,\n        workCount: newWorkTime * 60\n      });\n    }\n  },\n\n  render: function render() {\n    var _this2 = this;\n\n    var _state = this.state;\n    var breakCount = _state.breakCount;\n    var workCount = _state.workCount;\n    var countdownStatus = _state.countdownStatus;\n    var sessionType = _state.sessionType;\n\n\n    var renderClock = function renderClock() {\n      if (_this2.state.sessionType === 'work') {\n        return React.createElement(Clock, { totalSeconds: workCount, sessionType: sessionType });\n      } else if (_this2.state.sessionType === 'break') {\n        return React.createElement(Clock, { totalSeconds: breakCount, sessionType: sessionType });\n      }\n    };\n\n    return React.createElement(\n      'div',\n      null,\n      React.createElement(\n        'h3',\n        { className: 'page-title' },\n        'Pomodoro App'\n      ),\n      renderClock(),\n      React.createElement(Controls, _extends({}, this.state, { onStatusChange: this.handleStatusChange, onBreakChange: this.handleBreakChange, onWorkChange: this.handleWorkChange }))\n    );\n  }\n});\n\nmodule.exports = connect(function (state) {\n  return _extends({}, state);\n})(Timer);\n// module.exports = Timer;//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiMjQ5LmpzIiwic291cmNlcyI6WyJ3ZWJwYWNrOi8vL2FwcC9jb21wb25lbnRzL1RpbWVyLmpzeD9lMzYwIl0sInNvdXJjZXNDb250ZW50IjpbInZhciBSZWFjdCA9IHJlcXVpcmUoJ3JlYWN0Jyk7XHJcbnZhciB7Y29ubmVjdH0gPSByZXF1aXJlKCdyZWFjdC1yZWR1eCcpO1xyXG5cclxudmFyIENsb2NrID0gcmVxdWlyZSgnQ2xvY2snKTtcclxudmFyIENvbnRyb2xzID0gcmVxdWlyZSgnQ29udHJvbHMnKTtcclxuXHJcbnZhciBUaW1lciA9IFJlYWN0LmNyZWF0ZUNsYXNzKHtcclxuICBnZXRJbml0aWFsU3RhdGU6IGZ1bmN0aW9uICgpe1xyXG4gICAgcmV0dXJuIHtcclxuICAgICAgY291bnRkb3duU3RhdHVzOiAnc3RvcHBlZCcsXHJcbiAgICAgIGJyZWFrU2Vzc2lvbjogNSxcclxuICAgICAgd29ya1Nlc3Npb246IDI1LFxyXG4gICAgICBicmVha0NvdW50OiAzMDAsXHJcbiAgICAgIHdvcmtDb3VudDogMTUwMCxcclxuICAgICAgc2Vzc2lvblR5cGU6ICd3b3JrJ1xyXG5cclxuICAgIH07XHJcbiAgfSxcclxuXHJcbiAgY29tcG9uZW50RGlkVXBkYXRlOiBmdW5jdGlvbiAocHJldlByb3BzLCBwcmV2U3RhdGUpIHtcclxuICAgIGlmKHRoaXMuc3RhdGUuY291bnRkb3duU3RhdHVzICE9PSBwcmV2U3RhdGUuY291bnRkb3duU3RhdHVzKSB7XHJcbiAgICAgIHN3aXRjaCh0aGlzLnN0YXRlLmNvdW50ZG93blN0YXR1cyl7XHJcbiAgICAgICAgY2FzZSAnc3RhcnRlZCc6XHJcbiAgICAgICAgICB0aGlzLnN0YXJ0VGltZXIoKTtcclxuICAgICAgICAgIGJyZWFrO1xyXG4gICAgICAgIGNhc2UgJ3N0b3BwZWQnOlxyXG4gICAgICAgICAgdGhpcy5zZXRTdGF0ZSh7XHJcbiAgICAgICAgICAgIGJyZWFrQ291bnQ6IHRoaXMuc3RhdGUuYnJlYWtTZXNzaW9uKjYwLFxyXG4gICAgICAgICAgICB3b3JrQ291bnQ6IHRoaXMuc3RhdGUud29ya1Nlc3Npb24qNjAsXHJcbiAgICAgICAgICAgIHNlc3Npb25UeXBlOiAnd29yaydcclxuICAgICAgICAgIH0pO1xyXG4gICAgICAgIGNhc2UgJ3BhdXNlZCc6XHJcbiAgICAgICAgICBjbGVhckludGVydmFsKHRoaXMudGltZXIpXHJcbiAgICAgICAgICB0aGlzLnRpbWVyID0gdW5kZWZpbmVkO1xyXG4gICAgICAgICAgYnJlYWs7XHJcbiAgICAgIH1cclxuICAgIH1cclxuICB9LFxyXG5cclxuICAvLyBjb21wb25lbnRXaWxsVW5tb3VudDogZnVuY3Rpb24oKXtcclxuICAvL1xyXG4gIC8vICAgY2xlYXJJbnRlcnZhbCh0aGlzLnRpbWVyKTtcclxuICAvLyAgIHRoaXMudGltZXIgPSB1bmRlZmluZWQ7XHJcbiAgLy8gfSxcclxuXHJcbiAgc3RhcnRUaW1lcigpe1xyXG5cclxuICAgIHRoaXMudGltZXIgPSBzZXRJbnRlcnZhbCgoKSA9PiB7XHJcbiAgICAgIHZhcntzZXNzaW9uVHlwZX0gPSB0aGlzLnN0YXRlO1xyXG5cclxuICAgICAgaWYoc2Vzc2lvblR5cGU9PT1cIndvcmtcIil7XHJcbiAgICAgICAgdmFyIG5ld0NvdW50ID0gdGhpcy5zdGF0ZS53b3JrQ291bnQgLSAxO1xyXG4gICAgICAgIHRoaXMuc2V0U3RhdGUoe1xyXG4gICAgICAgICAgd29ya0NvdW50OiBuZXdDb3VudCA+PSAwID8gbmV3Q291bnQgOiAwXHJcbiAgICAgICAgfSk7XHJcblxyXG4gICAgICAgIGlmIChuZXdDb3VudCA9PT0gMCkge1xyXG4gICAgICAgICAgdGhpcy5zZXRTdGF0ZSh7c2Vzc2lvblR5cGU6ICdicmVhaycsd29ya0NvdW50OiB0aGlzLnN0YXRlLndvcmtTZXNzaW9uKjYwfSk7XHJcbiAgICAgICAgfVxyXG4gICAgICB9XHJcblxyXG4gICAgICBpZihzZXNzaW9uVHlwZT09PVwiYnJlYWtcIil7XHJcbiAgICAgICAgdmFyIG5ld0NvdW50ID0gdGhpcy5zdGF0ZS5icmVha0NvdW50IC0gMTtcclxuICAgICAgICB0aGlzLnNldFN0YXRlKHtcclxuICAgICAgICAgIGJyZWFrQ291bnQ6IG5ld0NvdW50ID49IDAgPyBuZXdDb3VudCA6IDBcclxuICAgICAgICB9KTtcclxuXHJcbiAgICAgICAgaWYgKG5ld0NvdW50ID09PSAwKSB7XHJcbiAgICAgICAgICB0aGlzLnNldFN0YXRlKHtzZXNzaW9uVHlwZTogJ3dvcmsnLGJyZWFrQ291bnQ6IHRoaXMuc3RhdGUuYnJlYWtTZXNzaW9uKjYwfSk7XHJcbiAgICAgICAgfVxyXG4gICAgICB9XHJcbiAgICB9LDEwMDApO1xyXG4gIH0sXHJcblxyXG4gIGhhbmRsZVNldENvdW50ZG93bjogZnVuY3Rpb24gKHNlY29uZHMpe1xyXG4gICAgdGhpcy5zZXRTdGF0ZSh7XHJcbiAgICAgIGNvdW50OiBzZWNvbmRzLFxyXG4gICAgICBjb3VudGRvd25TdGF0dXM6ICdzdGFydGVkJ1xyXG4gICAgfSk7XHJcbiAgfSxcclxuXHJcbiAgaGFuZGxlU3RhdHVzQ2hhbmdlOiBmdW5jdGlvbiAobmV3U3RhdHVzKXtcclxuICAgIHRoaXMuc2V0U3RhdGUoe1xyXG4gICAgICBjb3VudGRvd25TdGF0dXM6IG5ld1N0YXR1c1xyXG4gICAgfSlcclxuICB9LFxyXG5cclxuICBoYW5kbGVCcmVha0NoYW5nZTogZnVuY3Rpb24obmV3QnJlYWtUaW1lKXtcclxuICAgIGlmKG5ld0JyZWFrVGltZT4wKXtcclxuICAgICAgdGhpcy5zZXRTdGF0ZSh7XHJcbiAgICAgICAgYnJlYWtTZXNzaW9uOm5ld0JyZWFrVGltZSxcclxuICAgICAgICBicmVha0NvdW50OiBuZXdCcmVha1RpbWUqNjBcclxuICAgICAgfSk7XHJcbiAgICB9XHJcbiAgfSxcclxuXHJcbiAgaGFuZGxlV29ya0NoYW5nZTogZnVuY3Rpb24obmV3V29ya1RpbWUpe1xyXG4gICAgaWYobmV3V29ya1RpbWUpe1xyXG4gICAgICB0aGlzLnNldFN0YXRlKHtcclxuICAgICAgICB3b3JrU2Vzc2lvbjpuZXdXb3JrVGltZSxcclxuICAgICAgICB3b3JrQ291bnQ6IG5ld1dvcmtUaW1lKjYwXHJcbiAgICAgIH0pO1xyXG4gICAgfVxyXG4gIH0sXHJcblxyXG4gIHJlbmRlcjogZnVuY3Rpb24oKXtcclxuXHJcbiAgICB2YXIge2JyZWFrQ291bnQsIHdvcmtDb3VudCwgY291bnRkb3duU3RhdHVzLCBzZXNzaW9uVHlwZX0gPSB0aGlzLnN0YXRlO1xyXG5cclxuICAgIHZhciByZW5kZXJDbG9jayA9ICgpID0+IHtcclxuICAgICAgaWYodGhpcy5zdGF0ZS5zZXNzaW9uVHlwZSA9PT0gJ3dvcmsnKXtcclxuICAgICAgICByZXR1cm4gPENsb2NrIHRvdGFsU2Vjb25kcz17d29ya0NvdW50fSBzZXNzaW9uVHlwZT17c2Vzc2lvblR5cGV9Lz5cclxuICAgICAgfWVsc2UgaWYodGhpcy5zdGF0ZS5zZXNzaW9uVHlwZSA9PT0nYnJlYWsnKXtcclxuICAgICAgICByZXR1cm4gPENsb2NrIHRvdGFsU2Vjb25kcz17YnJlYWtDb3VudH0gc2Vzc2lvblR5cGU9e3Nlc3Npb25UeXBlfS8+XHJcbiAgICAgIH1cclxuICAgIH07XHJcblxyXG4gICAgcmV0dXJuKFxyXG4gICAgICA8ZGl2PlxyXG4gICAgICAgIDxoMyBjbGFzc05hbWU9XCJwYWdlLXRpdGxlXCI+UG9tb2Rvcm8gQXBwPC9oMz5cclxuICAgICAgICB7cmVuZGVyQ2xvY2soKX1cclxuICAgICAgICA8Q29udHJvbHMgey4uLnRoaXMuc3RhdGV9IG9uU3RhdHVzQ2hhbmdlPXt0aGlzLmhhbmRsZVN0YXR1c0NoYW5nZX0gb25CcmVha0NoYW5nZT17dGhpcy5oYW5kbGVCcmVha0NoYW5nZX0gb25Xb3JrQ2hhbmdlPXt0aGlzLmhhbmRsZVdvcmtDaGFuZ2V9Lz5cclxuXHJcbiAgICAgIDwvZGl2PlxyXG4gICAgKVxyXG4gIH1cclxufSk7XHJcblxyXG5tb2R1bGUuZXhwb3J0cyA9IGNvbm5lY3QoXHJcbiAgKHN0YXRlKSA9PiB7XHJcbiAgICByZXR1cm4ge1xyXG4gICAgICAuLi5zdGF0ZVxyXG4gICAgfTtcclxuICB9XHJcbikoVGltZXIpO1xyXG4vLyBtb2R1bGUuZXhwb3J0cyA9IFRpbWVyO1xyXG5cblxuXG4vKiogV0VCUEFDSyBGT09URVIgKipcbiAqKiBhcHAvY29tcG9uZW50cy9UaW1lci5qc3hcbiAqKi8iXSwibWFwcGluZ3MiOiI7Ozs7QUFBQTtBQUNBO0FBQUE7QUFDQTtBQURBO0FBQ0E7QUFDQTtBQUFBO0FBQ0E7QUFDQTtBQUNBO0FBQUE7QUFDQTtBQUFBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQVBBO0FBU0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFIQTtBQUtBO0FBQ0E7QUFDQTtBQUNBO0FBYkE7QUFlQTtBQUNBO0FBQ0E7Ozs7Ozs7QUFPQTtBQUFBO0FBQ0E7QUFDQTtBQUFBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBREE7QUFDQTtBQUdBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQURBO0FBQ0E7QUFHQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQUE7QUFDQTtBQUNBO0FBQ0E7QUFGQTtBQUlBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFEQTtBQUdBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBRkE7QUFJQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBRkE7QUFJQTtBQUNBO0FBQ0E7QUFDQTtBQUFBO0FBQ0E7QUFEQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQ0E7QUFDQTtBQUVBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQUE7QUFDQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQ0E7QUFDQTtBQUhBO0FBT0E7QUF2SEE7QUFDQTtBQXlIQTtBQUVBO0FBR0E7Iiwic291cmNlUm9vdCI6IiJ9");
+	eval("'use strict';\n\nObject.defineProperty(exports, \"__esModule\", {\n  value: true\n});\nexports.Timer = undefined;\n\nvar _Clock = __webpack_require__(250);\n\nvar _Clock2 = _interopRequireDefault(_Clock);\n\nvar _Controls = __webpack_require__(251);\n\nvar _Controls2 = _interopRequireDefault(_Controls);\n\nfunction _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }\n\nvar React = __webpack_require__(8);\n\nvar _require = __webpack_require__(166);\n\nvar connect = _require.connect;\n\nvar actions = __webpack_require__(252);\n\n// var Clock = require('Clock');\n// var Controls = require('Controls');\nvar Timer = exports.Timer = React.createClass({\n  displayName: 'Timer',\n\n  getInitialState: function getInitialState() {\n    return {\n      countdownStatus: 'stopped',\n      breakSession: 5,\n      workSession: 25,\n      breakCount: 300,\n      workCount: 1500,\n      sessionType: 'work'\n\n    };\n  },\n\n  componentDidUpdate: function componentDidUpdate(prevProps, prevState) {\n    if (this.state.countdownStatus !== prevState.countdownStatus) {\n      switch (this.state.countdownStatus) {\n        case 'started':\n          this.startTimer();\n          break;\n        case 'stopped':\n          this.setState({\n            breakCount: this.state.breakSession * 60,\n            workCount: this.state.workSession * 60,\n            sessionType: 'work'\n          });\n        case 'paused':\n          clearInterval(this.timer);\n          this.timer = undefined;\n          break;\n      }\n    }\n  },\n\n  // componentWillUnmount: function(){\n  //\n  //   clearInterval(this.timer);\n  //   this.timer = undefined;\n  // },\n\n  startTimer: function startTimer() {\n    var _this = this;\n\n    this.timer = setInterval(function () {\n      var sessionType = _this.state.sessionType;\n\n\n      if (sessionType === \"work\") {\n        var newCount = _this.state.workCount - 1;\n        _this.setState({\n          workCount: newCount >= 0 ? newCount : 0\n        });\n\n        if (newCount === 0) {\n          _this.setState({ sessionType: 'break', workCount: _this.state.workSession * 60 });\n        }\n      }\n\n      if (sessionType === \"break\") {\n        var newCount = _this.state.breakCount - 1;\n        _this.setState({\n          breakCount: newCount >= 0 ? newCount : 0\n        });\n\n        if (newCount === 0) {\n          _this.setState({ sessionType: 'work', breakCount: _this.state.breakSession * 60 });\n        }\n      }\n    }, 1000);\n  },\n\n\n  // handleSetCountdown: function (seconds){\n  //   this.setState({\n  //     count: seconds,\n  //     countdownStatus: 'started'\n  //   });\n  // },\n  //\n  // handleStatusChange: function (newStatus){\n  //   this.setState({\n  //     countdownStatus: newStatus\n  //   })\n  // },\n  //\n  // handleBreakChange: function(newBreakTime){\n  //   if(newBreakTime>0){\n  //     this.setState({\n  //       breakSession:newBreakTime,\n  //       breakCount: newBreakTime*60\n  //     });\n  //   }\n  // },\n  //\n  // handleWorkChange: function(newWorkTime){\n  //   if(newWorkTime){\n  //     this.setState({\n  //       workSession:newWorkTime,\n  //       workCount: newWorkTime*60\n  //     });\n  //   }\n  // },\n\n  render: function render() {\n    var _this2 = this;\n\n    var _state = this.state;\n    var breakCount = _state.breakCount;\n    var workCount = _state.workCount;\n    var countdownStatus = _state.countdownStatus;\n    var sessionType = _state.sessionType;\n    var dispatch = _state.dispatch;\n\n\n    var renderClock = function renderClock() {\n      if (_this2.state.sessionType === 'work') {\n        return React.createElement(_Clock2.default, { totalSeconds: workCount, sessionType: sessionType });\n      } else if (_this2.state.sessionType === 'break') {\n        return React.createElement(_Clock2.default, { totalSeconds: breakCount, sessionType: sessionType });\n      }\n    };\n\n    return React.createElement(\n      'div',\n      null,\n      React.createElement(\n        'h3',\n        { className: 'page-title' },\n        'Pomodoro App'\n      ),\n      renderClock(),\n      React.createElement(_Controls2.default, null)\n    );\n  }\n});\n\nexports.default = connect(function (state) {\n  return state;\n})(Timer);//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiMjQ5LmpzIiwic291cmNlcyI6WyJ3ZWJwYWNrOi8vL2FwcC9jb21wb25lbnRzL1RpbWVyLmpzeD9lMzYwIl0sInNvdXJjZXNDb250ZW50IjpbInZhciBSZWFjdCA9IHJlcXVpcmUoJ3JlYWN0Jyk7XHJcbnZhciB7Y29ubmVjdH0gPSByZXF1aXJlKCdyZWFjdC1yZWR1eCcpO1xyXG52YXIgYWN0aW9ucyA9IHJlcXVpcmUoJ2FjdGlvbnMnKTtcclxuXHJcbi8vIHZhciBDbG9jayA9IHJlcXVpcmUoJ0Nsb2NrJyk7XHJcbi8vIHZhciBDb250cm9scyA9IHJlcXVpcmUoJ0NvbnRyb2xzJyk7XHJcbmltcG9ydCBDbG9jayBmcm9tICdDbG9jayc7XHJcbmltcG9ydCBDb250cm9scyBmcm9tICdDb250cm9scyc7XHJcblxyXG5leHBvcnQgdmFyIFRpbWVyID0gUmVhY3QuY3JlYXRlQ2xhc3Moe1xyXG4gIGdldEluaXRpYWxTdGF0ZTogZnVuY3Rpb24gKCl7XHJcbiAgICByZXR1cm4ge1xyXG4gICAgICBjb3VudGRvd25TdGF0dXM6ICdzdG9wcGVkJyxcclxuICAgICAgYnJlYWtTZXNzaW9uOiA1LFxyXG4gICAgICB3b3JrU2Vzc2lvbjogMjUsXHJcbiAgICAgIGJyZWFrQ291bnQ6IDMwMCxcclxuICAgICAgd29ya0NvdW50OiAxNTAwLFxyXG4gICAgICBzZXNzaW9uVHlwZTogJ3dvcmsnXHJcblxyXG4gICAgfTtcclxuICB9LFxyXG5cclxuICBjb21wb25lbnREaWRVcGRhdGU6IGZ1bmN0aW9uIChwcmV2UHJvcHMsIHByZXZTdGF0ZSkge1xyXG4gICAgaWYodGhpcy5zdGF0ZS5jb3VudGRvd25TdGF0dXMgIT09IHByZXZTdGF0ZS5jb3VudGRvd25TdGF0dXMpIHtcclxuICAgICAgc3dpdGNoKHRoaXMuc3RhdGUuY291bnRkb3duU3RhdHVzKXtcclxuICAgICAgICBjYXNlICdzdGFydGVkJzpcclxuICAgICAgICAgIHRoaXMuc3RhcnRUaW1lcigpO1xyXG4gICAgICAgICAgYnJlYWs7XHJcbiAgICAgICAgY2FzZSAnc3RvcHBlZCc6XHJcbiAgICAgICAgICB0aGlzLnNldFN0YXRlKHtcclxuICAgICAgICAgICAgYnJlYWtDb3VudDogdGhpcy5zdGF0ZS5icmVha1Nlc3Npb24qNjAsXHJcbiAgICAgICAgICAgIHdvcmtDb3VudDogdGhpcy5zdGF0ZS53b3JrU2Vzc2lvbio2MCxcclxuICAgICAgICAgICAgc2Vzc2lvblR5cGU6ICd3b3JrJ1xyXG4gICAgICAgICAgfSk7XHJcbiAgICAgICAgY2FzZSAncGF1c2VkJzpcclxuICAgICAgICAgIGNsZWFySW50ZXJ2YWwodGhpcy50aW1lcilcclxuICAgICAgICAgIHRoaXMudGltZXIgPSB1bmRlZmluZWQ7XHJcbiAgICAgICAgICBicmVhaztcclxuICAgICAgfVxyXG4gICAgfVxyXG4gIH0sXHJcblxyXG4gIC8vIGNvbXBvbmVudFdpbGxVbm1vdW50OiBmdW5jdGlvbigpe1xyXG4gIC8vXHJcbiAgLy8gICBjbGVhckludGVydmFsKHRoaXMudGltZXIpO1xyXG4gIC8vICAgdGhpcy50aW1lciA9IHVuZGVmaW5lZDtcclxuICAvLyB9LFxyXG5cclxuICBzdGFydFRpbWVyKCl7XHJcblxyXG4gICAgdGhpcy50aW1lciA9IHNldEludGVydmFsKCgpID0+IHtcclxuICAgICAgdmFye3Nlc3Npb25UeXBlfSA9IHRoaXMuc3RhdGU7XHJcblxyXG4gICAgICBpZihzZXNzaW9uVHlwZT09PVwid29ya1wiKXtcclxuICAgICAgICB2YXIgbmV3Q291bnQgPSB0aGlzLnN0YXRlLndvcmtDb3VudCAtIDE7XHJcbiAgICAgICAgdGhpcy5zZXRTdGF0ZSh7XHJcbiAgICAgICAgICB3b3JrQ291bnQ6IG5ld0NvdW50ID49IDAgPyBuZXdDb3VudCA6IDBcclxuICAgICAgICB9KTtcclxuXHJcbiAgICAgICAgaWYgKG5ld0NvdW50ID09PSAwKSB7XHJcbiAgICAgICAgICB0aGlzLnNldFN0YXRlKHtzZXNzaW9uVHlwZTogJ2JyZWFrJyx3b3JrQ291bnQ6IHRoaXMuc3RhdGUud29ya1Nlc3Npb24qNjB9KTtcclxuICAgICAgICB9XHJcbiAgICAgIH1cclxuXHJcbiAgICAgIGlmKHNlc3Npb25UeXBlPT09XCJicmVha1wiKXtcclxuICAgICAgICB2YXIgbmV3Q291bnQgPSB0aGlzLnN0YXRlLmJyZWFrQ291bnQgLSAxO1xyXG4gICAgICAgIHRoaXMuc2V0U3RhdGUoe1xyXG4gICAgICAgICAgYnJlYWtDb3VudDogbmV3Q291bnQgPj0gMCA/IG5ld0NvdW50IDogMFxyXG4gICAgICAgIH0pO1xyXG5cclxuICAgICAgICBpZiAobmV3Q291bnQgPT09IDApIHtcclxuICAgICAgICAgIHRoaXMuc2V0U3RhdGUoe3Nlc3Npb25UeXBlOiAnd29yaycsYnJlYWtDb3VudDogdGhpcy5zdGF0ZS5icmVha1Nlc3Npb24qNjB9KTtcclxuICAgICAgICB9XHJcbiAgICAgIH1cclxuICAgIH0sMTAwMCk7XHJcbiAgfSxcclxuXHJcbiAgLy8gaGFuZGxlU2V0Q291bnRkb3duOiBmdW5jdGlvbiAoc2Vjb25kcyl7XHJcbiAgLy8gICB0aGlzLnNldFN0YXRlKHtcclxuICAvLyAgICAgY291bnQ6IHNlY29uZHMsXHJcbiAgLy8gICAgIGNvdW50ZG93blN0YXR1czogJ3N0YXJ0ZWQnXHJcbiAgLy8gICB9KTtcclxuICAvLyB9LFxyXG4gIC8vXHJcbiAgLy8gaGFuZGxlU3RhdHVzQ2hhbmdlOiBmdW5jdGlvbiAobmV3U3RhdHVzKXtcclxuICAvLyAgIHRoaXMuc2V0U3RhdGUoe1xyXG4gIC8vICAgICBjb3VudGRvd25TdGF0dXM6IG5ld1N0YXR1c1xyXG4gIC8vICAgfSlcclxuICAvLyB9LFxyXG4gIC8vXHJcbiAgLy8gaGFuZGxlQnJlYWtDaGFuZ2U6IGZ1bmN0aW9uKG5ld0JyZWFrVGltZSl7XHJcbiAgLy8gICBpZihuZXdCcmVha1RpbWU+MCl7XHJcbiAgLy8gICAgIHRoaXMuc2V0U3RhdGUoe1xyXG4gIC8vICAgICAgIGJyZWFrU2Vzc2lvbjpuZXdCcmVha1RpbWUsXHJcbiAgLy8gICAgICAgYnJlYWtDb3VudDogbmV3QnJlYWtUaW1lKjYwXHJcbiAgLy8gICAgIH0pO1xyXG4gIC8vICAgfVxyXG4gIC8vIH0sXHJcbiAgLy9cclxuICAvLyBoYW5kbGVXb3JrQ2hhbmdlOiBmdW5jdGlvbihuZXdXb3JrVGltZSl7XHJcbiAgLy8gICBpZihuZXdXb3JrVGltZSl7XHJcbiAgLy8gICAgIHRoaXMuc2V0U3RhdGUoe1xyXG4gIC8vICAgICAgIHdvcmtTZXNzaW9uOm5ld1dvcmtUaW1lLFxyXG4gIC8vICAgICAgIHdvcmtDb3VudDogbmV3V29ya1RpbWUqNjBcclxuICAvLyAgICAgfSk7XHJcbiAgLy8gICB9XHJcbiAgLy8gfSxcclxuXHJcbiAgcmVuZGVyOiBmdW5jdGlvbigpe1xyXG5cclxuICAgIHZhciB7YnJlYWtDb3VudCwgd29ya0NvdW50LCBjb3VudGRvd25TdGF0dXMsIHNlc3Npb25UeXBlLCBkaXNwYXRjaH0gPSB0aGlzLnN0YXRlO1xyXG5cclxuICAgIHZhciByZW5kZXJDbG9jayA9ICgpID0+IHtcclxuICAgICAgaWYodGhpcy5zdGF0ZS5zZXNzaW9uVHlwZSA9PT0gJ3dvcmsnKXtcclxuICAgICAgICByZXR1cm4gPENsb2NrIHRvdGFsU2Vjb25kcz17d29ya0NvdW50fSBzZXNzaW9uVHlwZT17c2Vzc2lvblR5cGV9Lz5cclxuICAgICAgfWVsc2UgaWYodGhpcy5zdGF0ZS5zZXNzaW9uVHlwZSA9PT0nYnJlYWsnKXtcclxuICAgICAgICByZXR1cm4gPENsb2NrIHRvdGFsU2Vjb25kcz17YnJlYWtDb3VudH0gc2Vzc2lvblR5cGU9e3Nlc3Npb25UeXBlfS8+XHJcbiAgICAgIH1cclxuICAgIH07XHJcblxyXG4gICAgcmV0dXJuKFxyXG4gICAgICA8ZGl2PlxyXG4gICAgICAgIDxoMyBjbGFzc05hbWU9XCJwYWdlLXRpdGxlXCI+UG9tb2Rvcm8gQXBwPC9oMz5cclxuICAgICAgICB7cmVuZGVyQ2xvY2soKX1cclxuICAgICAgICA8Q29udHJvbHMvPlxyXG5cclxuICAgICAgPC9kaXY+XHJcbiAgICApXHJcbiAgfVxyXG59KTtcclxuXHJcbmV4cG9ydCBkZWZhdWx0IGNvbm5lY3QoXHJcbiAgKHN0YXRlKSA9PiB7XHJcbiAgICByZXR1cm4gc3RhdGU7XHJcbiAgfVxyXG4pKFRpbWVyKTtcclxuXG5cblxuLyoqIFdFQlBBQ0sgRk9PVEVSICoqXG4gKiogYXBwL2NvbXBvbmVudHMvVGltZXIuanN4XG4gKiovIl0sIm1hcHBpbmdzIjoiOzs7Ozs7O0FBTUE7QUFDQTs7O0FBQUE7QUFDQTs7Ozs7QUFSQTtBQUNBO0FBQUE7QUFDQTtBQURBO0FBQ0E7QUFBQTtBQUNBOzs7QUFNQTtBQUFBO0FBQ0E7QUFBQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFQQTtBQVNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBSEE7QUFLQTtBQUNBO0FBQ0E7QUFDQTtBQWJBO0FBZUE7QUFDQTtBQUNBOzs7Ozs7O0FBT0E7QUFBQTtBQUNBO0FBQ0E7QUFBQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQURBO0FBQ0E7QUFHQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFEQTtBQUNBO0FBR0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7QUErQkE7QUFBQTtBQUNBO0FBREE7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQ0E7QUFDQTtBQUVBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQUE7QUFDQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQ0E7QUFDQTtBQUhBO0FBT0E7QUF2SEE7QUFDQTtBQXlIQTtBQUVBOyIsInNvdXJjZVJvb3QiOiIifQ==");
 
 /***/ },
 /* 250 */
 /***/ function(module, exports, __webpack_require__) {
 
-	eval("'use strict';\n\nvar React = __webpack_require__(8);\n\nvar Clock = React.createClass({\n  displayName: 'Clock',\n\n  getDefaultProps: function getDefaultProps() {\n    totalSeconds: 0;\n  },\n\n  propTypes: {\n    totalSeconds: React.PropTypes.number\n  },\n\n  formatSeconds: function formatSeconds(totalSeconds) {\n    var seconds = totalSeconds % 60;\n    var minutes = Math.floor(totalSeconds / 60);\n    if (seconds < 10) {\n      seconds = '0' + seconds;\n    }\n\n    if (minutes < 10) {\n      minutes = '0' + minutes;\n    }\n\n    return minutes + ':' + seconds;\n  },\n\n  render: function render() {\n    var _props = this.props;\n    var totalSeconds = _props.totalSeconds;\n    var sessionType = _props.sessionType;\n\n    return React.createElement(\n      'div',\n      { className: 'clock' },\n      React.createElement(\n        'span',\n        { className: 'clock-text' },\n        this.formatSeconds(totalSeconds),\n        ' - ',\n        sessionType\n      )\n    );\n  }\n});\n\nmodule.exports = Clock;//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiMjUwLmpzIiwic291cmNlcyI6WyJ3ZWJwYWNrOi8vL2FwcC9jb21wb25lbnRzL0Nsb2NrLmpzeD80ZGY0Il0sInNvdXJjZXNDb250ZW50IjpbInZhciBSZWFjdCA9IHJlcXVpcmUoJ3JlYWN0Jyk7XHJcblxyXG52YXIgQ2xvY2sgPSBSZWFjdC5jcmVhdGVDbGFzcyh7XHJcbiAgZ2V0RGVmYXVsdFByb3BzOiBmdW5jdGlvbigpe1xyXG4gICAgdG90YWxTZWNvbmRzOjBcclxuICB9LFxyXG5cclxuICBwcm9wVHlwZXM6IHtcclxuICAgIHRvdGFsU2Vjb25kczogUmVhY3QuUHJvcFR5cGVzLm51bWJlclxyXG4gIH0sXHJcblxyXG4gIGZvcm1hdFNlY29uZHM6IGZ1bmN0aW9uKHRvdGFsU2Vjb25kcykge1xyXG4gICAgdmFyIHNlY29uZHMgPSB0b3RhbFNlY29uZHMgJSA2MDtcclxuICAgIHZhciBtaW51dGVzID0gTWF0aC5mbG9vcih0b3RhbFNlY29uZHMvNjApO1xyXG4gICAgaWYoc2Vjb25kczwxMCl7XHJcbiAgICAgIHNlY29uZHMgPSAnMCcrIHNlY29uZHM7XHJcbiAgICB9XHJcblxyXG4gICAgaWYobWludXRlczwxMCl7XHJcbiAgICAgIG1pbnV0ZXMgPSAnMCcrIG1pbnV0ZXM7XHJcbiAgICB9XHJcblxyXG4gICAgcmV0dXJuIG1pbnV0ZXMgKyc6Jysgc2Vjb25kcztcclxuICB9LFxyXG5cclxuXHJcbiAgcmVuZGVyOiBmdW5jdGlvbigpe1xyXG4gICAgdmFyIHt0b3RhbFNlY29uZHMsIHNlc3Npb25UeXBlfSA9IHRoaXMucHJvcHM7XHJcbiAgICByZXR1cm4oXHJcbiAgICAgIDxkaXYgY2xhc3NOYW1lPVwiY2xvY2tcIj5cclxuICAgICAgICA8c3BhbiBjbGFzc05hbWU9XCJjbG9jay10ZXh0XCI+XHJcbiAgICAgICAgICB7dGhpcy5mb3JtYXRTZWNvbmRzKHRvdGFsU2Vjb25kcyl9IC0ge3Nlc3Npb25UeXBlfVxyXG4gICAgICAgIDwvc3Bhbj5cclxuICAgICAgPC9kaXY+XHJcbiAgICApXHJcbiAgfVxyXG59KTtcclxuXHJcbm1vZHVsZS5leHBvcnRzID0gQ2xvY2s7XHJcblxuXG5cbi8qKiBXRUJQQUNLIEZPT1RFUiAqKlxuICoqIGFwcC9jb21wb25lbnRzL0Nsb2NrLmpzeFxuICoqLyJdLCJtYXBwaW5ncyI6Ijs7QUFBQTtBQUNBO0FBQ0E7QUFBQTtBQUNBO0FBQUE7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBREE7QUFDQTtBQUdBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFFQTtBQUFBO0FBQUE7QUFBQTtBQUNBO0FBQ0E7QUFDQTtBQUFBO0FBQ0E7QUFBQTtBQUFBO0FBQ0E7QUFEQTtBQUNBO0FBREE7QUFEQTtBQU1BO0FBakNBO0FBQ0E7QUFtQ0EiLCJzb3VyY2VSb290IjoiIn0=");
+	eval("'use strict';\n\nvar React = __webpack_require__(8);\n\nvar Clock = React.createClass({\n  displayName: 'Clock',\n\n  getDefaultProps: function getDefaultProps() {\n    totalSeconds: 0;\n  },\n\n  propTypes: {\n    totalSeconds: React.PropTypes.number\n  },\n\n  formatSeconds: function formatSeconds(totalSeconds) {\n    var seconds = totalSeconds % 60;\n    var minutes = Math.floor(totalSeconds / 60);\n    if (seconds < 10) {\n      seconds = '0' + seconds;\n    }\n\n    if (minutes < 10) {\n      minutes = '0' + minutes;\n    }\n\n    return minutes + ':' + seconds;\n  },\n\n  render: function render() {\n    var _props = this.props;\n    var totalSeconds = _props.totalSeconds;\n    var sessionType = _props.sessionType;\n\n    return React.createElement(\n      'div',\n      { className: 'clock' },\n      React.createElement(\n        'span',\n        { className: 'clock-text' },\n        this.formatSeconds(totalSeconds),\n        ' - ',\n        sessionType\n      )\n    );\n  }\n});\n\nmodule.exports = Clock;//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiMjUwLmpzIiwic291cmNlcyI6WyJ3ZWJwYWNrOi8vL2FwcC9jb21wb25lbnRzL0Nsb2NrLmpzeD80ZGY0Il0sInNvdXJjZXNDb250ZW50IjpbInZhciBSZWFjdCA9IHJlcXVpcmUoJ3JlYWN0Jyk7XHJcblxyXG52YXIgQ2xvY2sgPSBSZWFjdC5jcmVhdGVDbGFzcyh7XHJcbiAgZ2V0RGVmYXVsdFByb3BzOiBmdW5jdGlvbigpe1xyXG4gICAgdG90YWxTZWNvbmRzOjBcclxuICB9LFxyXG5cclxuICBwcm9wVHlwZXM6IHtcclxuICAgIHRvdGFsU2Vjb25kczogUmVhY3QuUHJvcFR5cGVzLm51bWJlclxyXG4gIH0sXHJcblxyXG4gIGZvcm1hdFNlY29uZHM6IGZ1bmN0aW9uKHRvdGFsU2Vjb25kcykge1xyXG4gICAgdmFyIHNlY29uZHMgPSB0b3RhbFNlY29uZHMgJSA2MDtcclxuICAgIHZhciBtaW51dGVzID0gTWF0aC5mbG9vcih0b3RhbFNlY29uZHMvNjApO1xyXG4gICAgaWYoc2Vjb25kcyA8IDEwKXtcclxuICAgICAgc2Vjb25kcyA9ICcwJysgc2Vjb25kcztcclxuICAgIH1cclxuXHJcbiAgICBpZihtaW51dGVzIDwgMTApe1xyXG4gICAgICBtaW51dGVzID0gJzAnKyBtaW51dGVzO1xyXG4gICAgfVxyXG5cclxuICAgIHJldHVybiBtaW51dGVzICsnOicrIHNlY29uZHM7XHJcbiAgfSxcclxuXHJcblxyXG4gIHJlbmRlcjogZnVuY3Rpb24oKXtcclxuICAgIHZhciB7dG90YWxTZWNvbmRzLCBzZXNzaW9uVHlwZX0gPSB0aGlzLnByb3BzO1xyXG4gICAgcmV0dXJuKFxyXG4gICAgICA8ZGl2IGNsYXNzTmFtZT1cImNsb2NrXCI+XHJcbiAgICAgICAgPHNwYW4gY2xhc3NOYW1lPVwiY2xvY2stdGV4dFwiPlxyXG4gICAgICAgICAge3RoaXMuZm9ybWF0U2Vjb25kcyh0b3RhbFNlY29uZHMpfSAtIHtzZXNzaW9uVHlwZX1cclxuICAgICAgICA8L3NwYW4+XHJcbiAgICAgIDwvZGl2PlxyXG4gICAgKVxyXG4gIH1cclxufSk7XHJcblxyXG5tb2R1bGUuZXhwb3J0cyA9IENsb2NrO1xyXG5cblxuXG4vKiogV0VCUEFDSyBGT09URVIgKipcbiAqKiBhcHAvY29tcG9uZW50cy9DbG9jay5qc3hcbiAqKi8iXSwibWFwcGluZ3MiOiI7O0FBQUE7QUFDQTtBQUNBO0FBQUE7QUFDQTtBQUFBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQURBO0FBQ0E7QUFHQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBRUE7QUFBQTtBQUFBO0FBQUE7QUFDQTtBQUNBO0FBQ0E7QUFBQTtBQUNBO0FBQUE7QUFBQTtBQUNBO0FBREE7QUFDQTtBQURBO0FBREE7QUFNQTtBQWpDQTtBQUNBO0FBbUNBIiwic291cmNlUm9vdCI6IiJ9");
 
 /***/ },
 /* 251 */
 /***/ function(module, exports, __webpack_require__) {
 
-	eval("'use strict';\n\nvar React = __webpack_require__(8);\n\nvar _require = __webpack_require__(166);\n\nvar connect = _require.connect;\n\n\nvar Controls = React.createClass({\n  displayName: 'Controls',\n\n  propTypes: {\n    countdownStatus: React.PropTypes.string.isRequired,\n    onStatusChange: React.PropTypes.func.isRequired\n  },\n\n  onStatusChange: function onStatusChange(newStatus) {\n    var _this = this;\n\n    return function () {\n      _this.props.onStatusChange(newStatus);\n    };\n  },\n\n  onBreakChange: function onBreakChange(newBreak) {\n    var _this2 = this;\n\n    return function () {\n      _this2.props.onBreakChange(newBreak);\n    };\n  },\n\n  onWorkChange: function onWorkChange(newWork) {\n    var _this3 = this;\n\n    return function () {\n      // this.setState({breakSession:newBreak});\n      _this3.props.onWorkChange(newWork);\n    };\n  },\n\n  render: function render() {\n    var _this4 = this;\n\n    var _props = this.props;\n    var countdownStatus = _props.countdownStatus;\n    var breakSession = _props.breakSession;\n    var workSession = _props.workSession;\n\n    var renderStartStopButton = function renderStartStopButton() {\n      if (countdownStatus === 'started') {\n        return React.createElement(\n          'button',\n          { className: 'button secondary', onClick: _this4.onStatusChange('paused') },\n          'Pause'\n        );\n      } else {\n        return React.createElement(\n          'button',\n          { className: 'button primary', onClick: _this4.onStatusChange('started') },\n          'Start'\n        );\n      }\n    };\n\n    return React.createElement(\n      'div',\n      { className: 'controls' },\n      React.createElement(\n        'button',\n        { className: 'button alert hollow', onClick: this.onBreakChange(breakSession - 1) },\n        '-'\n      ),\n      ' ',\n      this.props.breakSession,\n      ' Break ',\n      React.createElement(\n        'button',\n        { className: 'button alert hollow', onClick: this.onBreakChange(breakSession + 1) },\n        '+'\n      ),\n      React.createElement(\n        'button',\n        { className: 'button alert hollow', onClick: this.onWorkChange(workSession - 1) },\n        '-'\n      ),\n      ' ',\n      this.props.workSession,\n      ' Work ',\n      React.createElement(\n        'button',\n        { className: 'button alert hollow', onClick: this.onWorkChange(workSession + 1) },\n        '+'\n      ),\n      React.createElement(\n        'div',\n        null,\n        renderStartStopButton(),\n        React.createElement(\n          'button',\n          { className: 'button alert hollow', onClick: this.onStatusChange('stopped') },\n          'Clear'\n        )\n      )\n    );\n  }\n});\n\nmodule.exports = connect(function (state) {\n  return {\n    countdownStatus: state.countdownStatus,\n    breakSession: state.breakSession,\n    workSession: state.workSession\n  };\n})(Controls);\n//\n// var React = require('react');\n// var {connect} = require('react-redux');\n//\n// var Controls = React.createClass({\n//   propTypes: {\n//     countdownStatus: React.PropTypes.string.isRequired,\n//     onStatusChange: React.PropTypes.func.isRequired\n//   },\n//\n//   onStatusChange: function(newStatus){\n//     return () => {\n//       this.props.onStatusChange(newStatus);\n//     }\n//   },\n//\n//   onBreakChange: function(newBreak){\n//     return ()=> {\n//       this.props.onBreakChange(newBreak);\n//     };\n//   },\n//\n//   onWorkChange: function(newWork){\n//     return ()=> {\n//       // this.setState({breakSession:newBreak});\n//       this.props.onWorkChange(newWork);\n//     };\n//   },\n//\n//   render: function(){\n//     var {countdownStatus, breakSession, workSession} = this.props;\n//     var renderStartStopButton = () => {\n//       if(countdownStatus ==='started'){\n//         return <button className=\"button secondary\" onClick={this.onStatusChange('paused')}>Pause</button>\n//       }else {\n//         return <button className=\"button primary\" onClick={this.onStatusChange('started')}>Start</button>\n//       }\n//     };\n//\n//\n//     return(\n//       <div className=\"controls\">\n//         <button className=\"button alert hollow\" onClick={this.onBreakChange(breakSession-1)}>-</button> {this.props.breakSession} Break <button className=\"button alert hollow\" onClick={this.onBreakChange(breakSession+1)}>+</button>\n//         <button className=\"button alert hollow\" onClick={this.onWorkChange(workSession-1)}>-</button> {this.props.workSession} Work <button className=\"button alert hollow\" onClick={this.onWorkChange(workSession+1)}>+</button>\n//         <div>\n//           {renderStartStopButton()}\n//           <button className=\"button alert hollow\" onClick={this.onStatusChange('stopped')}>Clear</button>\n//         </div>\n//\n//       </div>\n//     )\n//   }\n// });\n//\n// module.exports = Controls;\n////# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiMjUxLmpzIiwic291cmNlcyI6WyJ3ZWJwYWNrOi8vL2FwcC9jb21wb25lbnRzL0NvbnRyb2xzLmpzeD85ODgyIl0sInNvdXJjZXNDb250ZW50IjpbInZhciBSZWFjdCA9IHJlcXVpcmUoJ3JlYWN0Jyk7XHJcbnZhciB7Y29ubmVjdH0gPSByZXF1aXJlKCdyZWFjdC1yZWR1eCcpO1xyXG5cclxudmFyIENvbnRyb2xzID0gUmVhY3QuY3JlYXRlQ2xhc3Moe1xyXG4gIHByb3BUeXBlczoge1xyXG4gICAgY291bnRkb3duU3RhdHVzOiBSZWFjdC5Qcm9wVHlwZXMuc3RyaW5nLmlzUmVxdWlyZWQsXHJcbiAgICBvblN0YXR1c0NoYW5nZTogUmVhY3QuUHJvcFR5cGVzLmZ1bmMuaXNSZXF1aXJlZFxyXG4gIH0sXHJcblxyXG4gIG9uU3RhdHVzQ2hhbmdlOiBmdW5jdGlvbihuZXdTdGF0dXMpe1xyXG4gICAgcmV0dXJuICgpID0+IHtcclxuICAgICAgdGhpcy5wcm9wcy5vblN0YXR1c0NoYW5nZShuZXdTdGF0dXMpO1xyXG4gICAgfVxyXG4gIH0sXHJcblxyXG4gIG9uQnJlYWtDaGFuZ2U6IGZ1bmN0aW9uKG5ld0JyZWFrKXtcclxuICAgIHJldHVybiAoKT0+IHtcclxuICAgICAgdGhpcy5wcm9wcy5vbkJyZWFrQ2hhbmdlKG5ld0JyZWFrKTtcclxuICAgIH07XHJcbiAgfSxcclxuXHJcbiAgb25Xb3JrQ2hhbmdlOiBmdW5jdGlvbihuZXdXb3JrKXtcclxuICAgIHJldHVybiAoKT0+IHtcclxuICAgICAgLy8gdGhpcy5zZXRTdGF0ZSh7YnJlYWtTZXNzaW9uOm5ld0JyZWFrfSk7XHJcbiAgICAgIHRoaXMucHJvcHMub25Xb3JrQ2hhbmdlKG5ld1dvcmspO1xyXG4gICAgfTtcclxuICB9LFxyXG5cclxuICByZW5kZXI6IGZ1bmN0aW9uKCl7XHJcbiAgICB2YXIge2NvdW50ZG93blN0YXR1cywgYnJlYWtTZXNzaW9uLCB3b3JrU2Vzc2lvbn0gPSB0aGlzLnByb3BzO1xyXG4gICAgdmFyIHJlbmRlclN0YXJ0U3RvcEJ1dHRvbiA9ICgpID0+IHtcclxuICAgICAgaWYoY291bnRkb3duU3RhdHVzID09PSdzdGFydGVkJyl7XHJcbiAgICAgICAgcmV0dXJuIDxidXR0b24gY2xhc3NOYW1lPVwiYnV0dG9uIHNlY29uZGFyeVwiIG9uQ2xpY2s9e3RoaXMub25TdGF0dXNDaGFuZ2UoJ3BhdXNlZCcpfT5QYXVzZTwvYnV0dG9uPlxyXG4gICAgICB9ZWxzZSB7XHJcbiAgICAgICAgcmV0dXJuIDxidXR0b24gY2xhc3NOYW1lPVwiYnV0dG9uIHByaW1hcnlcIiBvbkNsaWNrPXt0aGlzLm9uU3RhdHVzQ2hhbmdlKCdzdGFydGVkJyl9PlN0YXJ0PC9idXR0b24+XHJcbiAgICAgIH1cclxuICAgIH07XHJcblxyXG5cclxuICAgIHJldHVybihcclxuICAgICAgPGRpdiBjbGFzc05hbWU9XCJjb250cm9sc1wiPlxyXG4gICAgICAgIDxidXR0b24gY2xhc3NOYW1lPVwiYnV0dG9uIGFsZXJ0IGhvbGxvd1wiIG9uQ2xpY2s9e3RoaXMub25CcmVha0NoYW5nZShicmVha1Nlc3Npb24tMSl9Pi08L2J1dHRvbj4ge3RoaXMucHJvcHMuYnJlYWtTZXNzaW9ufSBCcmVhayA8YnV0dG9uIGNsYXNzTmFtZT1cImJ1dHRvbiBhbGVydCBob2xsb3dcIiBvbkNsaWNrPXt0aGlzLm9uQnJlYWtDaGFuZ2UoYnJlYWtTZXNzaW9uKzEpfT4rPC9idXR0b24+XHJcbiAgICAgICAgPGJ1dHRvbiBjbGFzc05hbWU9XCJidXR0b24gYWxlcnQgaG9sbG93XCIgb25DbGljaz17dGhpcy5vbldvcmtDaGFuZ2Uod29ya1Nlc3Npb24tMSl9Pi08L2J1dHRvbj4ge3RoaXMucHJvcHMud29ya1Nlc3Npb259IFdvcmsgPGJ1dHRvbiBjbGFzc05hbWU9XCJidXR0b24gYWxlcnQgaG9sbG93XCIgb25DbGljaz17dGhpcy5vbldvcmtDaGFuZ2Uod29ya1Nlc3Npb24rMSl9Pis8L2J1dHRvbj5cclxuICAgICAgICA8ZGl2PlxyXG4gICAgICAgICAge3JlbmRlclN0YXJ0U3RvcEJ1dHRvbigpfVxyXG4gICAgICAgICAgPGJ1dHRvbiBjbGFzc05hbWU9XCJidXR0b24gYWxlcnQgaG9sbG93XCIgb25DbGljaz17dGhpcy5vblN0YXR1c0NoYW5nZSgnc3RvcHBlZCcpfT5DbGVhcjwvYnV0dG9uPlxyXG4gICAgICAgIDwvZGl2PlxyXG5cclxuICAgICAgPC9kaXY+XHJcbiAgICApXHJcbiAgfVxyXG59KTtcclxuXHJcbm1vZHVsZS5leHBvcnRzID0gY29ubmVjdChcclxuICAoc3RhdGUpID0+IHtcclxuICAgIHJldHVybiB7XHJcbiAgICAgIGNvdW50ZG93blN0YXR1czogc3RhdGUuY291bnRkb3duU3RhdHVzLFxyXG4gICAgICBicmVha1Nlc3Npb246IHN0YXRlLmJyZWFrU2Vzc2lvbixcclxuICAgICAgd29ya1Nlc3Npb246IHN0YXRlLndvcmtTZXNzaW9uXHJcbiAgICB9O1xyXG4gIH1cclxuKShDb250cm9scyk7XHJcbi8vXHJcbi8vIHZhciBSZWFjdCA9IHJlcXVpcmUoJ3JlYWN0Jyk7XHJcbi8vIHZhciB7Y29ubmVjdH0gPSByZXF1aXJlKCdyZWFjdC1yZWR1eCcpO1xyXG4vL1xyXG4vLyB2YXIgQ29udHJvbHMgPSBSZWFjdC5jcmVhdGVDbGFzcyh7XHJcbi8vICAgcHJvcFR5cGVzOiB7XHJcbi8vICAgICBjb3VudGRvd25TdGF0dXM6IFJlYWN0LlByb3BUeXBlcy5zdHJpbmcuaXNSZXF1aXJlZCxcclxuLy8gICAgIG9uU3RhdHVzQ2hhbmdlOiBSZWFjdC5Qcm9wVHlwZXMuZnVuYy5pc1JlcXVpcmVkXHJcbi8vICAgfSxcclxuLy9cclxuLy8gICBvblN0YXR1c0NoYW5nZTogZnVuY3Rpb24obmV3U3RhdHVzKXtcclxuLy8gICAgIHJldHVybiAoKSA9PiB7XHJcbi8vICAgICAgIHRoaXMucHJvcHMub25TdGF0dXNDaGFuZ2UobmV3U3RhdHVzKTtcclxuLy8gICAgIH1cclxuLy8gICB9LFxyXG4vL1xyXG4vLyAgIG9uQnJlYWtDaGFuZ2U6IGZ1bmN0aW9uKG5ld0JyZWFrKXtcclxuLy8gICAgIHJldHVybiAoKT0+IHtcclxuLy8gICAgICAgdGhpcy5wcm9wcy5vbkJyZWFrQ2hhbmdlKG5ld0JyZWFrKTtcclxuLy8gICAgIH07XHJcbi8vICAgfSxcclxuLy9cclxuLy8gICBvbldvcmtDaGFuZ2U6IGZ1bmN0aW9uKG5ld1dvcmspe1xyXG4vLyAgICAgcmV0dXJuICgpPT4ge1xyXG4vLyAgICAgICAvLyB0aGlzLnNldFN0YXRlKHticmVha1Nlc3Npb246bmV3QnJlYWt9KTtcclxuLy8gICAgICAgdGhpcy5wcm9wcy5vbldvcmtDaGFuZ2UobmV3V29yayk7XHJcbi8vICAgICB9O1xyXG4vLyAgIH0sXHJcbi8vXHJcbi8vICAgcmVuZGVyOiBmdW5jdGlvbigpe1xyXG4vLyAgICAgdmFyIHtjb3VudGRvd25TdGF0dXMsIGJyZWFrU2Vzc2lvbiwgd29ya1Nlc3Npb259ID0gdGhpcy5wcm9wcztcclxuLy8gICAgIHZhciByZW5kZXJTdGFydFN0b3BCdXR0b24gPSAoKSA9PiB7XHJcbi8vICAgICAgIGlmKGNvdW50ZG93blN0YXR1cyA9PT0nc3RhcnRlZCcpe1xyXG4vLyAgICAgICAgIHJldHVybiA8YnV0dG9uIGNsYXNzTmFtZT1cImJ1dHRvbiBzZWNvbmRhcnlcIiBvbkNsaWNrPXt0aGlzLm9uU3RhdHVzQ2hhbmdlKCdwYXVzZWQnKX0+UGF1c2U8L2J1dHRvbj5cclxuLy8gICAgICAgfWVsc2Uge1xyXG4vLyAgICAgICAgIHJldHVybiA8YnV0dG9uIGNsYXNzTmFtZT1cImJ1dHRvbiBwcmltYXJ5XCIgb25DbGljaz17dGhpcy5vblN0YXR1c0NoYW5nZSgnc3RhcnRlZCcpfT5TdGFydDwvYnV0dG9uPlxyXG4vLyAgICAgICB9XHJcbi8vICAgICB9O1xyXG4vL1xyXG4vL1xyXG4vLyAgICAgcmV0dXJuKFxyXG4vLyAgICAgICA8ZGl2IGNsYXNzTmFtZT1cImNvbnRyb2xzXCI+XHJcbi8vICAgICAgICAgPGJ1dHRvbiBjbGFzc05hbWU9XCJidXR0b24gYWxlcnQgaG9sbG93XCIgb25DbGljaz17dGhpcy5vbkJyZWFrQ2hhbmdlKGJyZWFrU2Vzc2lvbi0xKX0+LTwvYnV0dG9uPiB7dGhpcy5wcm9wcy5icmVha1Nlc3Npb259IEJyZWFrIDxidXR0b24gY2xhc3NOYW1lPVwiYnV0dG9uIGFsZXJ0IGhvbGxvd1wiIG9uQ2xpY2s9e3RoaXMub25CcmVha0NoYW5nZShicmVha1Nlc3Npb24rMSl9Pis8L2J1dHRvbj5cclxuLy8gICAgICAgICA8YnV0dG9uIGNsYXNzTmFtZT1cImJ1dHRvbiBhbGVydCBob2xsb3dcIiBvbkNsaWNrPXt0aGlzLm9uV29ya0NoYW5nZSh3b3JrU2Vzc2lvbi0xKX0+LTwvYnV0dG9uPiB7dGhpcy5wcm9wcy53b3JrU2Vzc2lvbn0gV29yayA8YnV0dG9uIGNsYXNzTmFtZT1cImJ1dHRvbiBhbGVydCBob2xsb3dcIiBvbkNsaWNrPXt0aGlzLm9uV29ya0NoYW5nZSh3b3JrU2Vzc2lvbisxKX0+KzwvYnV0dG9uPlxyXG4vLyAgICAgICAgIDxkaXY+XHJcbi8vICAgICAgICAgICB7cmVuZGVyU3RhcnRTdG9wQnV0dG9uKCl9XHJcbi8vICAgICAgICAgICA8YnV0dG9uIGNsYXNzTmFtZT1cImJ1dHRvbiBhbGVydCBob2xsb3dcIiBvbkNsaWNrPXt0aGlzLm9uU3RhdHVzQ2hhbmdlKCdzdG9wcGVkJyl9PkNsZWFyPC9idXR0b24+XHJcbi8vICAgICAgICAgPC9kaXY+XHJcbi8vXHJcbi8vICAgICAgIDwvZGl2PlxyXG4vLyAgICAgKVxyXG4vLyAgIH1cclxuLy8gfSk7XHJcbi8vXHJcbi8vIG1vZHVsZS5leHBvcnRzID0gQ29udHJvbHM7XHJcbi8vXHJcblxuXG5cbi8qKiBXRUJQQUNLIEZPT1RFUiAqKlxuICoqIGFwcC9jb21wb25lbnRzL0NvbnRyb2xzLmpzeFxuICoqLyJdLCJtYXBwaW5ncyI6Ijs7QUFBQTtBQUNBO0FBQUE7QUFDQTtBQURBO0FBQ0E7QUFDQTtBQUFBO0FBQUE7QUFDQTtBQUFBO0FBQ0E7QUFDQTtBQUZBO0FBQ0E7QUFJQTtBQUFBO0FBQ0E7QUFBQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFBQTtBQUNBO0FBQUE7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQUE7QUFDQTtBQUFBOztBQUVBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFBQTtBQUNBO0FBREE7QUFBQTtBQUFBO0FBQUE7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQ0E7QUFDQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQ0E7QUFDQTtBQUNBO0FBRUE7QUFDQTtBQUFBO0FBQ0E7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQURBO0FBQ0E7QUFEQTtBQUNBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFDQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBRkE7QUFFQTtBQUZBO0FBRUE7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUNBO0FBQUE7QUFBQTtBQUNBO0FBQ0E7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUZBO0FBSEE7QUFVQTtBQS9DQTtBQUNBO0FBaURBO0FBRUE7QUFDQTtBQUNBO0FBQ0E7QUFIQTtBQUtBOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7OzsiLCJzb3VyY2VSb290IjoiIn0=");
+	eval("'use strict';\n\nObject.defineProperty(exports, \"__esModule\", {\n  value: true\n});\nvar React = __webpack_require__(8);\n\nvar _require = __webpack_require__(166);\n\nvar connect = _require.connect;\n\nvar actions = __webpack_require__(252);\n\nvar Controls = exports.Controls = React.createClass({\n  displayName: 'Controls',\n\n  // propTypes: {\n  //   countdownStatus: React.PropTypes.string.isRequired,\n  //   onStatusChange: React.PropTypes.func.isRequired\n  // },\n\n  onStatusChange: function onStatusChange(newStatus) {\n    var _this = this;\n\n    return function () {\n      _this.props.onStatusChange(newStatus);\n    };\n  },\n\n  onBreakChange: function onBreakChange(newBreak) {\n    var _this2 = this;\n\n    return function () {\n      _this2.props.onBreakChange(newBreak);\n    };\n  },\n\n  onWorkChange: function onWorkChange(newWork) {\n    var _this3 = this;\n\n    return function () {\n      // this.setState({breakSession:newBreak});\n      _this3.props.onWorkChange(newWork);\n    };\n  },\n\n  render: function render() {\n    var _props = this.props;\n    var countdownStatus = _props.countdownStatus;\n    var breakSession = _props.breakSession;\n    var workSession = _props.workSession;\n    var dispatch = _props.dispatch;\n\n    var renderStartStopButton = function renderStartStopButton() {\n      if (countdownStatus === 'started') {\n        return React.createElement(\n          'button',\n          { className: 'button secondary', onClick: function onClick() {\n              dispatch(actions.setStatus('paused'));\n            } },\n          'Pause'\n        );\n      } else {\n        return React.createElement(\n          'button',\n          { className: 'button primary', onClick: function onClick() {\n              dispatch(actions.setStatus('started'));\n            } },\n          'Start'\n        );\n      }\n    };\n\n    return React.createElement(\n      'div',\n      { className: 'controls' },\n      React.createElement(\n        'button',\n        { className: 'button alert hollow', onClick: function onClick() {\n            dispatch(actions.decrementBreakSession());\n          } },\n        '-'\n      ),\n      ' ',\n      this.props.breakSession,\n      ' Break ',\n      React.createElement(\n        'button',\n        { className: 'button alert hollow', onClick: function onClick() {\n            dispatch(actions.incrementBreakSession());\n          } },\n        '+'\n      ),\n      React.createElement(\n        'button',\n        { className: 'button alert hollow', onClick: function onClick() {\n            dispatch(actions.decrementWorkSession());\n          } },\n        '-'\n      ),\n      ' ',\n      this.props.workSession,\n      ' Work ',\n      React.createElement(\n        'button',\n        { className: 'button alert hollow', onClick: function onClick() {\n            dispatch(actions.incrementWorkSession());\n          } },\n        '+'\n      ),\n      React.createElement(\n        'div',\n        null,\n        renderStartStopButton(),\n        React.createElement(\n          'button',\n          { className: 'button alert hollow', onClick: function onClick() {\n              dispatch(actions.setStatus('stopped'));\n            } },\n          'Clear'\n        )\n      )\n    );\n  }\n});\n\nexports.default = connect(function (state) {\n  return state;\n})(Controls);//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiMjUxLmpzIiwic291cmNlcyI6WyJ3ZWJwYWNrOi8vL2FwcC9jb21wb25lbnRzL0NvbnRyb2xzLmpzeD85ODgyIl0sInNvdXJjZXNDb250ZW50IjpbInZhciBSZWFjdCA9IHJlcXVpcmUoJ3JlYWN0Jyk7XHJcbnZhciB7Y29ubmVjdH0gPSByZXF1aXJlKCdyZWFjdC1yZWR1eCcpO1xyXG52YXIgYWN0aW9ucyA9IHJlcXVpcmUoJ2FjdGlvbnMnKTtcclxuXHJcbmV4cG9ydCB2YXIgQ29udHJvbHMgPSBSZWFjdC5jcmVhdGVDbGFzcyh7XHJcbiAgLy8gcHJvcFR5cGVzOiB7XHJcbiAgLy8gICBjb3VudGRvd25TdGF0dXM6IFJlYWN0LlByb3BUeXBlcy5zdHJpbmcuaXNSZXF1aXJlZCxcclxuICAvLyAgIG9uU3RhdHVzQ2hhbmdlOiBSZWFjdC5Qcm9wVHlwZXMuZnVuYy5pc1JlcXVpcmVkXHJcbiAgLy8gfSxcclxuXHJcbiAgb25TdGF0dXNDaGFuZ2U6IGZ1bmN0aW9uKG5ld1N0YXR1cyl7XHJcbiAgICByZXR1cm4gKCkgPT4ge1xyXG4gICAgICB0aGlzLnByb3BzLm9uU3RhdHVzQ2hhbmdlKG5ld1N0YXR1cyk7XHJcbiAgICB9XHJcbiAgfSxcclxuXHJcbiAgb25CcmVha0NoYW5nZTogZnVuY3Rpb24obmV3QnJlYWspe1xyXG4gICAgcmV0dXJuICgpPT4ge1xyXG4gICAgICB0aGlzLnByb3BzLm9uQnJlYWtDaGFuZ2UobmV3QnJlYWspO1xyXG4gICAgfTtcclxuICB9LFxyXG5cclxuICBvbldvcmtDaGFuZ2U6IGZ1bmN0aW9uKG5ld1dvcmspe1xyXG4gICAgcmV0dXJuICgpPT4ge1xyXG4gICAgICAvLyB0aGlzLnNldFN0YXRlKHticmVha1Nlc3Npb246bmV3QnJlYWt9KTtcclxuICAgICAgdGhpcy5wcm9wcy5vbldvcmtDaGFuZ2UobmV3V29yayk7XHJcbiAgICB9O1xyXG4gIH0sXHJcblxyXG4gIHJlbmRlcjogZnVuY3Rpb24oKXtcclxuICAgIHZhciB7Y291bnRkb3duU3RhdHVzLCBicmVha1Nlc3Npb24sIHdvcmtTZXNzaW9uLCBkaXNwYXRjaH0gPSB0aGlzLnByb3BzO1xyXG4gICAgdmFyIHJlbmRlclN0YXJ0U3RvcEJ1dHRvbiA9ICgpID0+IHtcclxuICAgICAgaWYoY291bnRkb3duU3RhdHVzID09PSdzdGFydGVkJyl7XHJcbiAgICAgICAgcmV0dXJuIDxidXR0b24gY2xhc3NOYW1lPVwiYnV0dG9uIHNlY29uZGFyeVwiIG9uQ2xpY2s9eygpID0+IHtcclxuICAgICAgICAgICAgZGlzcGF0Y2goYWN0aW9ucy5zZXRTdGF0dXMoJ3BhdXNlZCcpKVxyXG4gICAgICAgICAgfX0+UGF1c2U8L2J1dHRvbj5cclxuICAgICAgfWVsc2Uge1xyXG4gICAgICAgIHJldHVybiA8YnV0dG9uIGNsYXNzTmFtZT1cImJ1dHRvbiBwcmltYXJ5XCIgb25DbGljaz17KCkgPT4ge1xyXG4gICAgICAgICAgICBkaXNwYXRjaChhY3Rpb25zLnNldFN0YXR1cygnc3RhcnRlZCcpKVxyXG4gICAgICAgICAgfX0+U3RhcnQ8L2J1dHRvbj5cclxuICAgICAgfVxyXG4gICAgfTtcclxuXHJcblxyXG4gICAgcmV0dXJuKFxyXG4gICAgICA8ZGl2IGNsYXNzTmFtZT1cImNvbnRyb2xzXCI+XHJcbiAgICAgICAgPGJ1dHRvbiBjbGFzc05hbWU9XCJidXR0b24gYWxlcnQgaG9sbG93XCIgb25DbGljaz17KCkgPT4ge1xyXG4gICAgICAgICAgICBkaXNwYXRjaChhY3Rpb25zLmRlY3JlbWVudEJyZWFrU2Vzc2lvbigpKVxyXG4gICAgICAgICAgfX0+LTwvYnV0dG9uPiB7dGhpcy5wcm9wcy5icmVha1Nlc3Npb259IEJyZWFrIDxidXR0b24gY2xhc3NOYW1lPVwiYnV0dG9uIGFsZXJ0IGhvbGxvd1wiIG9uQ2xpY2s9eygpID0+IHtcclxuICAgICAgICAgICAgZGlzcGF0Y2goYWN0aW9ucy5pbmNyZW1lbnRCcmVha1Nlc3Npb24oKSlcclxuICAgICAgICAgIH19Pis8L2J1dHRvbj5cclxuICAgICAgICA8YnV0dG9uIGNsYXNzTmFtZT1cImJ1dHRvbiBhbGVydCBob2xsb3dcIiBvbkNsaWNrPXsoKSA9PiB7XHJcbiAgICAgICAgICAgIGRpc3BhdGNoKGFjdGlvbnMuZGVjcmVtZW50V29ya1Nlc3Npb24oKSlcclxuICAgICAgICAgIH19Pi08L2J1dHRvbj4ge3RoaXMucHJvcHMud29ya1Nlc3Npb259IFdvcmsgPGJ1dHRvbiBjbGFzc05hbWU9XCJidXR0b24gYWxlcnQgaG9sbG93XCIgb25DbGljaz17KCkgPT4ge1xyXG4gICAgICAgICAgICBkaXNwYXRjaChhY3Rpb25zLmluY3JlbWVudFdvcmtTZXNzaW9uKCkpXHJcbiAgICAgICAgICB9fT4rPC9idXR0b24+XHJcbiAgICAgICAgPGRpdj5cclxuICAgICAgICAgIHtyZW5kZXJTdGFydFN0b3BCdXR0b24oKX1cclxuICAgICAgICAgIDxidXR0b24gY2xhc3NOYW1lPVwiYnV0dG9uIGFsZXJ0IGhvbGxvd1wiIG9uQ2xpY2s9eygpID0+IHtcclxuICAgICAgICAgICAgICBkaXNwYXRjaChhY3Rpb25zLnNldFN0YXR1cygnc3RvcHBlZCcpKVxyXG4gICAgICAgICAgICB9fT5DbGVhcjwvYnV0dG9uPlxyXG4gICAgICAgIDwvZGl2PlxyXG5cclxuICAgICAgPC9kaXY+XHJcbiAgICApXHJcbiAgfVxyXG59KTtcclxuXHJcbmV4cG9ydCBkZWZhdWx0IGNvbm5lY3QoXHJcbiAgKHN0YXRlKSA9PiB7XHJcbiAgICByZXR1cm4gc3RhdGU7XHJcbiAgfVxyXG4pKENvbnRyb2xzKTtcclxuXG5cblxuLyoqIFdFQlBBQ0sgRk9PVEVSICoqXG4gKiogYXBwL2NvbXBvbmVudHMvQ29udHJvbHMuanN4XG4gKiovIl0sIm1hcHBpbmdzIjoiOzs7OztBQUFBO0FBQ0E7QUFBQTtBQUNBO0FBREE7QUFDQTtBQUFBO0FBQ0E7QUFDQTtBQUFBO0FBQ0E7Ozs7OztBQUtBO0FBQUE7QUFDQTtBQUFBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUFBO0FBQ0E7QUFBQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFBQTtBQUNBO0FBQUE7O0FBRUE7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUFBO0FBQUE7QUFDQTtBQUNBO0FBRkE7QUFBQTtBQUdBO0FBQ0E7QUFBQTtBQUFBO0FBQ0E7QUFDQTtBQUZBO0FBQUE7QUFHQTtBQUNBO0FBQ0E7QUFFQTtBQUNBO0FBQUE7QUFDQTtBQUFBO0FBQUE7QUFDQTtBQUNBO0FBRkE7QUFBQTtBQURBO0FBR0E7QUFIQTtBQUdBO0FBQUE7QUFBQTtBQUNBO0FBQ0E7QUFGQTtBQUFBO0FBR0E7QUFBQTtBQUFBO0FBQ0E7QUFDQTtBQUZBO0FBQUE7QUFOQTtBQVFBO0FBUkE7QUFRQTtBQUFBO0FBQUE7QUFDQTtBQUNBO0FBRkE7QUFBQTtBQUdBO0FBQUE7QUFBQTtBQUNBO0FBQ0E7QUFBQTtBQUFBO0FBQ0E7QUFDQTtBQUZBO0FBQUE7QUFGQTtBQVhBO0FBb0JBO0FBN0RBO0FBQ0E7QUErREE7QUFFQTsiLCJzb3VyY2VSb290IjoiIn0=");
 
 /***/ },
 /* 252 */
 /***/ function(module, exports) {
 
-	eval("'use strict';\n\nObject.defineProperty(exports, \"__esModule\", {\n  value: true\n});\nvar setStatusStart = exports.setStatusStart = function setStatusStart(status) {\n  return {\n    type: 'SET_STATUS_START',\n    status: status\n  };\n};\n\nvar setStatusStop = exports.setStatusStop = function setStatusStop(status) {\n  return {\n    type: 'SET_STATUS_STOP',\n    status: status\n  };\n};\n\nvar setStatusPause = exports.setStatusPause = function setStatusPause(status) {\n  return {\n    type: 'SET_STATUS_PAUSE',\n    status: status\n  };\n};\n\nvar setSessionWork = exports.setSessionWork = function setSessionWork(sessionType) {\n  return {\n    type: 'SET_SESSION_WORK',\n    sessionType: sessionType\n  };\n};\n\nvar setSessionBreak = exports.setSessionBreak = function setSessionBreak(sessionType) {\n  return {\n    type: 'SET_SESSION_BREAK',\n    sessionType: sessionType\n  };\n};\n\nvar incrementWorkSession = exports.incrementWorkSession = function incrementWorkSession() {\n  return {\n    type: 'INCREMENT_WORK_SESSION'\n  };\n};\n\nvar decrementWorkSession = exports.decrementWorkSession = function decrementWorkSession() {\n  return {\n    type: 'DECREMENT_WORK_SESSION'\n  };\n};\n\nvar incrementBreakSession = exports.incrementBreakSession = function incrementBreakSession() {\n  return {\n    type: 'INCREMENT_BREAK_SESSION'\n  };\n};\n\nvar decrementBreakSession = exports.decrementBreakSession = function decrementBreakSession() {\n  return {\n    type: 'DECREMENT_BREAK_SESSION'\n  };\n};\n\nvar setWorkCount = exports.setWorkCount = function setWorkCount(mintues) {\n  return {\n    type: 'SET_WORK_COUNT',\n    count: mintues * 60\n  };\n};\n\nvar decrementWorkCount = exports.decrementWorkCount = function decrementWorkCount() {\n  return {\n    type: 'DECREMENT_WORK_COUNT'\n  };\n};\n\nvar setBreakCount = exports.setBreakCount = function setBreakCount(mintues) {\n  return {\n    type: 'SET_BREAK_COUNT',\n    count: mintues * 60\n  };\n};\n\nvar decrementBreakCount = exports.decrementBreakCount = function decrementBreakCount() {\n  return {\n    type: 'DECREMENT_BREAK_COUNT'\n  };\n};//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiMjUyLmpzIiwic291cmNlcyI6WyJ3ZWJwYWNrOi8vL2FwcC9hY3Rpb25zL2FjdGlvbnMuanN4PzVlMmQiXSwic291cmNlc0NvbnRlbnQiOlsiZXhwb3J0IHZhciBzZXRTdGF0dXNTdGFydCA9IChzdGF0dXMpID0+IHtcclxuICByZXR1cm4ge1xyXG4gICAgdHlwZTogJ1NFVF9TVEFUVVNfU1RBUlQnLFxyXG4gICAgc3RhdHVzXHJcbiAgfTtcclxufTtcclxuXHJcbmV4cG9ydCB2YXIgc2V0U3RhdHVzU3RvcCA9IChzdGF0dXMpID0+IHtcclxuICByZXR1cm4ge1xyXG4gICAgdHlwZTogJ1NFVF9TVEFUVVNfU1RPUCcsXHJcbiAgICBzdGF0dXNcclxuICB9O1xyXG59O1xyXG5cclxuZXhwb3J0IHZhciBzZXRTdGF0dXNQYXVzZSA9IChzdGF0dXMpID0+IHtcclxuICByZXR1cm4ge1xyXG4gICAgdHlwZTogJ1NFVF9TVEFUVVNfUEFVU0UnLFxyXG4gICAgc3RhdHVzXHJcbiAgfTtcclxufTtcclxuXHJcbmV4cG9ydCB2YXIgc2V0U2Vzc2lvbldvcmsgPSAoc2Vzc2lvblR5cGUpID0+IHtcclxuICByZXR1cm4ge1xyXG4gICAgdHlwZTogJ1NFVF9TRVNTSU9OX1dPUksnLFxyXG4gICAgc2Vzc2lvblR5cGVcclxuICB9O1xyXG59O1xyXG5cclxuZXhwb3J0IHZhciBzZXRTZXNzaW9uQnJlYWsgPSAoc2Vzc2lvblR5cGUpID0+IHtcclxuICByZXR1cm4ge1xyXG4gICAgdHlwZTogJ1NFVF9TRVNTSU9OX0JSRUFLJyxcclxuICAgIHNlc3Npb25UeXBlXHJcbiAgfTtcclxufTtcclxuXHJcbmV4cG9ydCB2YXIgaW5jcmVtZW50V29ya1Nlc3Npb24gPSAoKSA9PiB7XHJcbiAgcmV0dXJuIHtcclxuICAgIHR5cGU6ICdJTkNSRU1FTlRfV09SS19TRVNTSU9OJ1xyXG4gIH07XHJcbn07XHJcblxyXG5leHBvcnQgdmFyIGRlY3JlbWVudFdvcmtTZXNzaW9uID0gKCkgPT4ge1xyXG4gIHJldHVybiB7XHJcbiAgICB0eXBlOiAnREVDUkVNRU5UX1dPUktfU0VTU0lPTidcclxuICB9O1xyXG59O1xyXG5cclxuZXhwb3J0IHZhciBpbmNyZW1lbnRCcmVha1Nlc3Npb24gPSAoKSA9PiB7XHJcbiAgcmV0dXJuIHtcclxuICAgIHR5cGU6ICdJTkNSRU1FTlRfQlJFQUtfU0VTU0lPTidcclxuICB9O1xyXG59O1xyXG5cclxuZXhwb3J0IHZhciBkZWNyZW1lbnRCcmVha1Nlc3Npb24gPSAoKSA9PiB7XHJcbiAgcmV0dXJuIHtcclxuICAgIHR5cGU6ICdERUNSRU1FTlRfQlJFQUtfU0VTU0lPTidcclxuICB9O1xyXG59O1xyXG5cclxuZXhwb3J0IHZhciBzZXRXb3JrQ291bnQgPSAobWludHVlcykgPT4ge1xyXG4gIHJldHVybiB7XHJcbiAgICB0eXBlOiAnU0VUX1dPUktfQ09VTlQnLFxyXG4gICAgY291bnQ6IG1pbnR1ZXMqNjBcclxuICB9O1xyXG59O1xyXG5cclxuZXhwb3J0IHZhciBkZWNyZW1lbnRXb3JrQ291bnQgPSAoKSA9PiB7XHJcbiAgcmV0dXJuIHtcclxuICAgIHR5cGU6ICdERUNSRU1FTlRfV09SS19DT1VOVCdcclxuICB9O1xyXG59O1xyXG5cclxuZXhwb3J0IHZhciBzZXRCcmVha0NvdW50ID0gKG1pbnR1ZXMpID0+IHtcclxuICByZXR1cm4ge1xyXG4gICAgdHlwZTogJ1NFVF9CUkVBS19DT1VOVCcsXHJcbiAgICBjb3VudDogbWludHVlcyo2MFxyXG4gIH07XHJcbn07XHJcblxyXG5leHBvcnQgdmFyIGRlY3JlbWVudEJyZWFrQ291bnQgPSAoKSA9PiB7XHJcbiAgcmV0dXJuIHtcclxuICAgIHR5cGU6ICdERUNSRU1FTlRfQlJFQUtfQ09VTlQnXHJcbiAgfTtcclxufTtcclxuXG5cblxuLyoqIFdFQlBBQ0sgRk9PVEVSICoqXG4gKiogYXBwL2FjdGlvbnMvYWN0aW9ucy5qc3hcbiAqKi8iXSwibWFwcGluZ3MiOiI7Ozs7O0FBQUE7QUFDQTtBQUNBO0FBQ0E7QUFGQTtBQUlBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUZBO0FBSUE7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBRkE7QUFJQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFGQTtBQUlBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUZBO0FBSUE7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQURBO0FBR0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQURBO0FBR0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQURBO0FBR0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQURBO0FBR0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBRkE7QUFJQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBREE7QUFHQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFGQTtBQUlBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFEQTtBQUdBIiwic291cmNlUm9vdCI6IiJ9");
+	eval("'use strict';\n\nObject.defineProperty(exports, \"__esModule\", {\n  value: true\n});\nvar setStatus = exports.setStatus = function setStatus(status) {\n  return {\n    type: 'SET_STATUS',\n    status: status\n  };\n};\n\nvar setSessionWork = exports.setSessionWork = function setSessionWork(sessionType) {\n  return {\n    type: 'SET_SESSION_WORK',\n    sessionType: sessionType\n  };\n};\n\nvar setSessionBreak = exports.setSessionBreak = function setSessionBreak(sessionType) {\n  return {\n    type: 'SET_SESSION_BREAK',\n    sessionType: sessionType\n  };\n};\n\nvar incrementWorkSession = exports.incrementWorkSession = function incrementWorkSession() {\n  return {\n    type: 'INCREMENT_WORK_SESSION'\n  };\n};\n\nvar decrementWorkSession = exports.decrementWorkSession = function decrementWorkSession() {\n  return {\n    type: 'DECREMENT_WORK_SESSION'\n  };\n};\n\nvar incrementBreakSession = exports.incrementBreakSession = function incrementBreakSession() {\n  return {\n    type: 'INCREMENT_BREAK_SESSION'\n  };\n};\n\nvar decrementBreakSession = exports.decrementBreakSession = function decrementBreakSession() {\n  return {\n    type: 'DECREMENT_BREAK_SESSION'\n  };\n};\n\nvar setWorkCount = exports.setWorkCount = function setWorkCount(mintues) {\n  return {\n    type: 'SET_WORK_COUNT',\n    count: mintues * 60\n  };\n};\n\nvar decrementWorkCount = exports.decrementWorkCount = function decrementWorkCount() {\n  return {\n    type: 'DECREMENT_WORK_COUNT'\n  };\n};\n\nvar setBreakCount = exports.setBreakCount = function setBreakCount(mintues) {\n  return {\n    type: 'SET_BREAK_COUNT',\n    count: mintues * 60\n  };\n};\n\nvar decrementBreakCount = exports.decrementBreakCount = function decrementBreakCount() {\n  return {\n    type: 'DECREMENT_BREAK_COUNT'\n  };\n};//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiMjUyLmpzIiwic291cmNlcyI6WyJ3ZWJwYWNrOi8vL2FwcC9hY3Rpb25zL2FjdGlvbnMuanN4PzVlMmQiXSwic291cmNlc0NvbnRlbnQiOlsiZXhwb3J0IHZhciBzZXRTdGF0dXMgPSAoc3RhdHVzKSA9PiB7XHJcbiAgcmV0dXJuIHtcclxuICAgIHR5cGU6ICdTRVRfU1RBVFVTJyxcclxuICAgIHN0YXR1c1xyXG4gIH07XHJcbn07XHJcblxyXG5leHBvcnQgdmFyIHNldFNlc3Npb25Xb3JrID0gKHNlc3Npb25UeXBlKSA9PiB7XHJcbiAgcmV0dXJuIHtcclxuICAgIHR5cGU6ICdTRVRfU0VTU0lPTl9XT1JLJyxcclxuICAgIHNlc3Npb25UeXBlXHJcbiAgfTtcclxufTtcclxuXHJcbmV4cG9ydCB2YXIgc2V0U2Vzc2lvbkJyZWFrID0gKHNlc3Npb25UeXBlKSA9PiB7XHJcbiAgcmV0dXJuIHtcclxuICAgIHR5cGU6ICdTRVRfU0VTU0lPTl9CUkVBSycsXHJcbiAgICBzZXNzaW9uVHlwZVxyXG4gIH07XHJcbn07XHJcblxyXG5leHBvcnQgdmFyIGluY3JlbWVudFdvcmtTZXNzaW9uID0gKCkgPT4ge1xyXG4gIHJldHVybiB7XHJcbiAgICB0eXBlOiAnSU5DUkVNRU5UX1dPUktfU0VTU0lPTidcclxuICB9O1xyXG59O1xyXG5cclxuZXhwb3J0IHZhciBkZWNyZW1lbnRXb3JrU2Vzc2lvbiA9ICgpID0+IHtcclxuICByZXR1cm4ge1xyXG4gICAgdHlwZTogJ0RFQ1JFTUVOVF9XT1JLX1NFU1NJT04nXHJcbiAgfTtcclxufTtcclxuXHJcbmV4cG9ydCB2YXIgaW5jcmVtZW50QnJlYWtTZXNzaW9uID0gKCkgPT4ge1xyXG4gIHJldHVybiB7XHJcbiAgICB0eXBlOiAnSU5DUkVNRU5UX0JSRUFLX1NFU1NJT04nXHJcbiAgfTtcclxufTtcclxuXHJcbmV4cG9ydCB2YXIgZGVjcmVtZW50QnJlYWtTZXNzaW9uID0gKCkgPT4ge1xyXG4gIHJldHVybiB7XHJcbiAgICB0eXBlOiAnREVDUkVNRU5UX0JSRUFLX1NFU1NJT04nXHJcbiAgfTtcclxufTtcclxuXHJcbmV4cG9ydCB2YXIgc2V0V29ya0NvdW50ID0gKG1pbnR1ZXMpID0+IHtcclxuICByZXR1cm4ge1xyXG4gICAgdHlwZTogJ1NFVF9XT1JLX0NPVU5UJyxcclxuICAgIGNvdW50OiBtaW50dWVzKjYwXHJcbiAgfTtcclxufTtcclxuXHJcbmV4cG9ydCB2YXIgZGVjcmVtZW50V29ya0NvdW50ID0gKCkgPT4ge1xyXG4gIHJldHVybiB7XHJcbiAgICB0eXBlOiAnREVDUkVNRU5UX1dPUktfQ09VTlQnXHJcbiAgfTtcclxufTtcclxuXHJcbmV4cG9ydCB2YXIgc2V0QnJlYWtDb3VudCA9IChtaW50dWVzKSA9PiB7XHJcbiAgcmV0dXJuIHtcclxuICAgIHR5cGU6ICdTRVRfQlJFQUtfQ09VTlQnLFxyXG4gICAgY291bnQ6IG1pbnR1ZXMqNjBcclxuICB9O1xyXG59O1xyXG5cclxuZXhwb3J0IHZhciBkZWNyZW1lbnRCcmVha0NvdW50ID0gKCkgPT4ge1xyXG4gIHJldHVybiB7XHJcbiAgICB0eXBlOiAnREVDUkVNRU5UX0JSRUFLX0NPVU5UJ1xyXG4gIH07XHJcbn07XHJcblxuXG5cbi8qKiBXRUJQQUNLIEZPT1RFUiAqKlxuICoqIGFwcC9hY3Rpb25zL2FjdGlvbnMuanN4XG4gKiovIl0sIm1hcHBpbmdzIjoiOzs7OztBQUFBO0FBQ0E7QUFDQTtBQUNBO0FBRkE7QUFJQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFGQTtBQUlBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUZBO0FBSUE7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQURBO0FBR0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQURBO0FBR0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQURBO0FBR0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQURBO0FBR0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBRkE7QUFJQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBREE7QUFHQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFGQTtBQUlBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFEQTtBQUdBIiwic291cmNlUm9vdCI6IiJ9");
 
 /***/ },
 /* 253 */
 /***/ function(module, exports, __webpack_require__) {
 
-	eval("'use strict';\n\nObject.defineProperty(exports, \"__esModule\", {\n  value: true\n});\nvar redux = __webpack_require__(173);\n\nvar _require = __webpack_require__(254);\n\nvar countdownStatusReducer = _require.countdownStatusReducer;\nvar sessionTypeReducer = _require.sessionTypeReducer;\nvar breakSessionReducer = _require.breakSessionReducer;\nvar workSessionReducer = _require.workSessionReducer;\nvar breakCountReducer = _require.breakCountReducer;\nvar workCountReducer = _require.workCountReducer;\nvar configure = exports.configure = function configure() {\n  var reducer = redux.combineReducers({\n    countdownStatus: countdownStatusReducer,\n    sessionType: sessionTypeReducer,\n    breakSession: breakSessionReducer,\n    workSession: workSessionReducer,\n    breakCount: breakCountReducer,\n    workCount: workCountReducer\n  });\n\n  var store = redux.createStore(reducer, redux.compose(window.devToolsExtension ? window.devToolsExtension() : function (f) {\n    return f;\n  }));\n\n  return store;\n};//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiMjUzLmpzIiwic291cmNlcyI6WyJ3ZWJwYWNrOi8vL2FwcC9zdG9yZS9jb25maWd1cmVTdG9yZS5qc3g/Y2I4NyJdLCJzb3VyY2VzQ29udGVudCI6WyJ2YXIgcmVkdXggPSByZXF1aXJlKCdyZWR1eCcpO1xyXG52YXIge1xyXG4gIGNvdW50ZG93blN0YXR1c1JlZHVjZXIsXHJcbiAgc2Vzc2lvblR5cGVSZWR1Y2VyLFxyXG4gIGJyZWFrU2Vzc2lvblJlZHVjZXIsXHJcbiAgd29ya1Nlc3Npb25SZWR1Y2VyLFxyXG4gIGJyZWFrQ291bnRSZWR1Y2VyLFxyXG4gIHdvcmtDb3VudFJlZHVjZXJ9ID0gcmVxdWlyZSgncmVkdWNlcnMnKTtcclxuXHJcbmV4cG9ydCB2YXIgY29uZmlndXJlID0gKCkgPT4ge1xyXG4gIHZhciByZWR1Y2VyID0gcmVkdXguY29tYmluZVJlZHVjZXJzKHtcclxuICAgIGNvdW50ZG93blN0YXR1czogY291bnRkb3duU3RhdHVzUmVkdWNlcixcclxuICAgIHNlc3Npb25UeXBlOiBzZXNzaW9uVHlwZVJlZHVjZXIsXHJcbiAgICBicmVha1Nlc3Npb246IGJyZWFrU2Vzc2lvblJlZHVjZXIsXHJcbiAgICB3b3JrU2Vzc2lvbjogd29ya1Nlc3Npb25SZWR1Y2VyLFxyXG4gICAgYnJlYWtDb3VudDogYnJlYWtDb3VudFJlZHVjZXIsXHJcbiAgICB3b3JrQ291bnQ6IHdvcmtDb3VudFJlZHVjZXJcclxuICB9KTtcclxuXHJcbiAgdmFyIHN0b3JlID0gcmVkdXguY3JlYXRlU3RvcmUocmVkdWNlciwgcmVkdXguY29tcG9zZShcclxuICAgIHdpbmRvdy5kZXZUb29sc0V4dGVuc2lvbiA/IHdpbmRvdy5kZXZUb29sc0V4dGVuc2lvbigpIDogZiA9PiBmXHJcbiAgKSk7XHJcblxyXG4gIHJldHVybiBzdG9yZTtcclxufTtcclxuXG5cblxuLyoqIFdFQlBBQ0sgRk9PVEVSICoqXG4gKiogYXBwL3N0b3JlL2NvbmZpZ3VyZVN0b3JlLmpzeFxuICoqLyJdLCJtYXBwaW5ncyI6Ijs7Ozs7QUFBQTtBQUNBO0FBTUE7QUFDQTtBQU5BO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUVBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFOQTtBQUNBO0FBUUE7QUFDQTtBQUFBO0FBQ0E7QUFFQTsiLCJzb3VyY2VSb290IjoiIn0=");
+	eval("'use strict';\n\nObject.defineProperty(exports, \"__esModule\", {\n  value: true\n});\nvar redux = __webpack_require__(173);\n// var {pomodoroReducer, countdownStatusReducer, sessionTypeReducer, breakSessionReducer, workSessionReducer, breakCountReducer, workCountReducer} = require('reducers');\n\nvar _require = __webpack_require__(254);\n\nvar pomodoroReducer = _require.pomodoroReducer;\nvar configure = exports.configure = function configure() {\n  var reducer = redux.combineReducers({\n    pomodoro: pomodoroReducer\n  });\n\n  var store = redux.createStore(reducer, redux.compose(window.devToolsExtension ? window.devToolsExtension() : function (f) {\n    return f;\n  }));\n\n  return store;\n};//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiMjUzLmpzIiwic291cmNlcyI6WyJ3ZWJwYWNrOi8vL2FwcC9zdG9yZS9jb25maWd1cmVTdG9yZS5qc3g/Y2I4NyJdLCJzb3VyY2VzQ29udGVudCI6WyJ2YXIgcmVkdXggPSByZXF1aXJlKCdyZWR1eCcpO1xyXG4vLyB2YXIge3BvbW9kb3JvUmVkdWNlciwgY291bnRkb3duU3RhdHVzUmVkdWNlciwgc2Vzc2lvblR5cGVSZWR1Y2VyLCBicmVha1Nlc3Npb25SZWR1Y2VyLCB3b3JrU2Vzc2lvblJlZHVjZXIsIGJyZWFrQ291bnRSZWR1Y2VyLCB3b3JrQ291bnRSZWR1Y2VyfSA9IHJlcXVpcmUoJ3JlZHVjZXJzJyk7XHJcbnZhciB7cG9tb2Rvcm9SZWR1Y2VyfSA9IHJlcXVpcmUoJ3JlZHVjZXJzJyk7XHJcblxyXG5leHBvcnQgdmFyIGNvbmZpZ3VyZSA9ICgpID0+IHtcclxuICB2YXIgcmVkdWNlciA9IHJlZHV4LmNvbWJpbmVSZWR1Y2Vycyh7XHJcbiAgICBwb21vZG9ybzogcG9tb2Rvcm9SZWR1Y2VyLFxyXG4gICAgLy8gY291bnRkb3duU3RhdHVzOiBjb3VudGRvd25TdGF0dXNSZWR1Y2VyLFxyXG4gICAgLy8gc2Vzc2lvblR5cGU6IHNlc3Npb25UeXBlUmVkdWNlcixcclxuICAgIC8vIGJyZWFrU2Vzc2lvbjogYnJlYWtTZXNzaW9uUmVkdWNlcixcclxuICAgIC8vIHdvcmtTZXNzaW9uOiB3b3JrU2Vzc2lvblJlZHVjZXIsXHJcbiAgICAvLyBicmVha0NvdW50OiBicmVha0NvdW50UmVkdWNlcixcclxuICAgIC8vIHdvcmtDb3VudDogd29ya0NvdW50UmVkdWNlclxyXG4gIH0pO1xyXG5cclxuICB2YXIgc3RvcmUgPSByZWR1eC5jcmVhdGVTdG9yZShyZWR1Y2VyLCByZWR1eC5jb21wb3NlKFxyXG4gICAgd2luZG93LmRldlRvb2xzRXh0ZW5zaW9uID8gd2luZG93LmRldlRvb2xzRXh0ZW5zaW9uKCkgOiBmID0+IGZcclxuICApKTtcclxuXHJcbiAgcmV0dXJuIHN0b3JlO1xyXG59O1xyXG5cblxuXG4vKiogV0VCUEFDSyBGT09URVIgKipcbiAqKiBhcHAvc3RvcmUvY29uZmlndXJlU3RvcmUuanN4XG4gKiovIl0sIm1hcHBpbmdzIjoiOzs7OztBQUFBOzs7QUFFQTtBQUNBO0FBREE7QUFFQTtBQUNBO0FBQ0E7QUFEQTtBQUNBO0FBU0E7QUFDQTtBQUFBO0FBQ0E7QUFFQTsiLCJzb3VyY2VSb290IjoiIn0=");
 
 /***/ },
 /* 254 */
 /***/ function(module, exports) {
 
-	eval("'use strict';\n\n// countdownStatus: 'stopped',\n// breakSession: 5,\n// workSession: 25,\n// breakCount: 300,\n// workCount: 1500,\n// sessionType: 'work'\n\nvar countdownStatusReducer = function countdownStatusReducer() {\n  var state = arguments.length <= 0 || arguments[0] === undefined ? 'stopped' : arguments[0];\n  var action = arguments[1];\n\n  switch (action.type) {\n    case 'SET_TO_START':\n      return action.status;\n    case 'SET_TO_STOP':\n      return action.status;\n    case 'SET_TO_PAUSE':\n      return action.status;\n    default:\n      return state;\n  };\n};\n\nvar sessionTypeReducer = function sessionTypeReducer() {\n  var state = arguments.length <= 0 || arguments[0] === undefined ? 'work' : arguments[0];\n  var action = arguments[1];\n\n  switch (action.type) {\n    case 'SET_SESSION_WORK':\n      return action.status;\n    case 'SET_TO_BREAK':\n      return action.status;\n    default:\n      return state;\n  };\n};\n\nvar breakSessionReducer = function breakSessionReducer() {\n  var state = arguments.length <= 0 || arguments[0] === undefined ? 5 : arguments[0];\n  var action = arguments[1];\n\n  switch (action.type) {\n    case 'INCREMENT_BREAK_SESSION':\n      return state + 1;\n    case 'DECREMENT_BREAK_SESSION':\n      return state - 1;\n    default:\n      return state;\n  };\n};\n\nvar workSessionReducer = function workSessionReducer() {\n  var state = arguments.length <= 0 || arguments[0] === undefined ? 25 : arguments[0];\n  var action = arguments[1];\n\n  switch (action.type) {\n    case 'INCREMENT_WORK_SESSION':\n      return state + 1;\n    case 'DECREMENT_WORK_SESSION':\n      return state - 1;\n    default:\n      return state;\n  };\n};\n\nvar breakCountReducer = function breakCountReducer() {\n  var state = arguments.length <= 0 || arguments[0] === undefined ? 300 : arguments[0];\n  var action = arguments[1];\n\n  switch (action.type) {\n    case 'SET_BREAK_COUNT':\n      //temp\n      return state;\n    case 'DECREMENT_BREAK_COUNT':\n      return state - 1;\n    default:\n      return state;\n\n  };\n};\n\nvar workCountReducer = function workCountReducer() {\n  var state = arguments.length <= 0 || arguments[0] === undefined ? 1500 : arguments[0];\n  var action = arguments[1];\n\n  switch (action.type) {\n    case 'SET_WORK_COUNT':\n      //temp\n      return state;\n    case 'DECREMENT_WORK_COUNT':\n      return state - 1;\n    default:\n      return state;\n\n  };\n};//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiMjU0LmpzIiwic291cmNlcyI6WyJ3ZWJwYWNrOi8vL2FwcC9yZWR1Y2Vycy9yZWR1Y2Vycy5qc3g/YzdhNiJdLCJzb3VyY2VzQ29udGVudCI6WyIvLyBjb3VudGRvd25TdGF0dXM6ICdzdG9wcGVkJyxcclxuLy8gYnJlYWtTZXNzaW9uOiA1LFxyXG4vLyB3b3JrU2Vzc2lvbjogMjUsXHJcbi8vIGJyZWFrQ291bnQ6IDMwMCxcclxuLy8gd29ya0NvdW50OiAxNTAwLFxyXG4vLyBzZXNzaW9uVHlwZTogJ3dvcmsnXHJcblxyXG52YXIgY291bnRkb3duU3RhdHVzUmVkdWNlciA9IChzdGF0ZSA9ICdzdG9wcGVkJywgYWN0aW9uKSA9PiB7XHJcbiAgc3dpdGNoIChhY3Rpb24udHlwZSkge1xyXG4gICAgY2FzZSAnU0VUX1RPX1NUQVJUJzpcclxuICAgICAgcmV0dXJuIGFjdGlvbi5zdGF0dXM7XHJcbiAgICBjYXNlICdTRVRfVE9fU1RPUCc6XHJcbiAgICAgIHJldHVybiBhY3Rpb24uc3RhdHVzO1xyXG4gICAgY2FzZSAnU0VUX1RPX1BBVVNFJzpcclxuICAgICAgcmV0dXJuIGFjdGlvbi5zdGF0dXM7XHJcbiAgICBkZWZhdWx0OlxyXG4gICAgICByZXR1cm4gc3RhdGU7XHJcbiAgfTtcclxufTtcclxuXHJcbnZhciBzZXNzaW9uVHlwZVJlZHVjZXIgPSAoc3RhdGUgPSAnd29yaycsIGFjdGlvbikgPT4ge1xyXG4gIHN3aXRjaCAoYWN0aW9uLnR5cGUpIHtcclxuICAgIGNhc2UgJ1NFVF9TRVNTSU9OX1dPUksnOlxyXG4gICAgICByZXR1cm4gYWN0aW9uLnN0YXR1cztcclxuICAgIGNhc2UgJ1NFVF9UT19CUkVBSyc6XHJcbiAgICAgIHJldHVybiBhY3Rpb24uc3RhdHVzO1xyXG4gICAgZGVmYXVsdDpcclxuICAgICAgcmV0dXJuIHN0YXRlO1xyXG4gIH07XHJcbn07XHJcblxyXG52YXIgYnJlYWtTZXNzaW9uUmVkdWNlciA9IChzdGF0ZSA9IDUsIGFjdGlvbikgPT4ge1xyXG4gIHN3aXRjaCAoYWN0aW9uLnR5cGUpIHtcclxuICAgIGNhc2UgJ0lOQ1JFTUVOVF9CUkVBS19TRVNTSU9OJzpcclxuICAgICAgcmV0dXJuIHN0YXRlICsgMTtcclxuICAgIGNhc2UgJ0RFQ1JFTUVOVF9CUkVBS19TRVNTSU9OJzpcclxuICAgICAgcmV0dXJuIHN0YXRlIC0gMTtcclxuICAgIGRlZmF1bHQ6XHJcbiAgICAgIHJldHVybiBzdGF0ZTtcclxuICB9O1xyXG59O1xyXG5cclxudmFyIHdvcmtTZXNzaW9uUmVkdWNlciA9IChzdGF0ZSA9IDI1LCBhY3Rpb24pID0+IHtcclxuICBzd2l0Y2ggKGFjdGlvbi50eXBlKSB7XHJcbiAgICBjYXNlICdJTkNSRU1FTlRfV09SS19TRVNTSU9OJzpcclxuICAgICAgcmV0dXJuIHN0YXRlICsgMTtcclxuICAgIGNhc2UgJ0RFQ1JFTUVOVF9XT1JLX1NFU1NJT04nOlxyXG4gICAgICByZXR1cm4gc3RhdGUgLSAxO1xyXG4gICAgZGVmYXVsdDpcclxuICAgICAgcmV0dXJuIHN0YXRlO1xyXG4gIH07XHJcbn07XHJcblxyXG52YXIgYnJlYWtDb3VudFJlZHVjZXIgPSAoc3RhdGUgPSAzMDAsIGFjdGlvbikgPT4ge1xyXG4gIHN3aXRjaCAoYWN0aW9uLnR5cGUpIHtcclxuICAgIGNhc2UgJ1NFVF9CUkVBS19DT1VOVCc6XHJcbiAgICAgIC8vdGVtcFxyXG4gICAgICByZXR1cm4gc3RhdGU7XHJcbiAgICBjYXNlICdERUNSRU1FTlRfQlJFQUtfQ09VTlQnOlxyXG4gICAgICByZXR1cm4gc3RhdGUgLSAxO1xyXG4gICAgZGVmYXVsdDpcclxuICAgICAgcmV0dXJuIHN0YXRlO1xyXG5cclxuICB9O1xyXG59O1xyXG5cclxudmFyIHdvcmtDb3VudFJlZHVjZXIgPSAoc3RhdGUgPSAxNTAwLCBhY3Rpb24pID0+IHtcclxuICBzd2l0Y2ggKGFjdGlvbi50eXBlKSB7XHJcbiAgICBjYXNlICdTRVRfV09SS19DT1VOVCc6XHJcbiAgICAgIC8vdGVtcFxyXG4gICAgICByZXR1cm4gc3RhdGU7XHJcbiAgICBjYXNlICdERUNSRU1FTlRfV09SS19DT1VOVCc6XHJcbiAgICAgIHJldHVybiBzdGF0ZSAtIDE7XHJcbiAgICBkZWZhdWx0OlxyXG4gICAgICByZXR1cm4gc3RhdGU7XHJcblxyXG4gIH07XHJcbn07XHJcblxuXG5cbi8qKiBXRUJQQUNLIEZPT1RFUiAqKlxuICoqIGFwcC9yZWR1Y2Vycy9yZWR1Y2Vycy5qc3hcbiAqKi8iXSwibWFwcGluZ3MiOiI7Ozs7Ozs7OztBQU9BO0FBQUE7QUFBQTtBQUNBO0FBQUE7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBUkE7QUFVQTtBQUNBO0FBQ0E7QUFBQTtBQUFBO0FBQ0E7QUFBQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQU5BO0FBUUE7QUFDQTtBQUNBO0FBQUE7QUFBQTtBQUNBO0FBQUE7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFOQTtBQVFBO0FBQ0E7QUFDQTtBQUFBO0FBQUE7QUFDQTtBQUFBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBTkE7QUFRQTtBQUNBO0FBQ0E7QUFBQTtBQUFBO0FBQ0E7QUFBQTtBQUNBOztBQUVBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQVJBO0FBVUE7QUFDQTtBQUNBO0FBQUE7QUFBQTtBQUNBO0FBQUE7QUFDQTs7QUFFQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFSQTtBQVVBIiwic291cmNlUm9vdCI6IiJ9");
+	eval("'use strict';\n\nObject.defineProperty(exports, \"__esModule\", {\n  value: true\n});\n\nvar _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };\n\nvar initialState = {\n  countdownStatus: 'stopped',\n  breakSession: 5,\n  workSession: 25,\n  breakCount: 300,\n  workCount: 1500,\n  sessionType: 'work'\n};\n\nvar pomodoroReducer = exports.pomodoroReducer = function pomodoroReducer() {\n  var state = arguments.length <= 0 || arguments[0] === undefined ? initialState : arguments[0];\n  var action = arguments[1];\n\n  switch (action.type) {\n    case 'SET_STATUS':\n      return _extends({}, state, {\n        countdownStatus: action.type['countdownStatus'] = action.type\n      });\n    case 'SET_SESSION_WORK':\n      return _extends({}, state, {\n        sessionType: action.status\n      });\n    case 'SET_TO_BREAK':\n      return _extends({}, state, {\n        sessionType: action.status\n      });\n    case 'INCREMENT_BREAK_SESSION':\n      return _extends({}, state, {\n        breakSession: breakSession + 1\n      });\n    case 'DECREMENT_BREAK_SESSION':\n      return _extends({}, state, {\n        breakSession: breakSession - 1\n      });\n    case 'INCREMENT_WORK_SESSION':\n      return _extends({}, state, {\n        workSession: workSession + 1\n      });\n    case 'DECREMENT_WORK_SESSION':\n      return _extends({}, state, {\n        workSession: workSession - 1\n      });\n    case 'SET_BREAK_COUNT':\n      return _extends({}, state, {\n        breakCount: state.breakSession * 60\n      });\n      return state;\n    case 'DECREMENT_BREAK_COUNT':\n      return _extends({}, state, {\n        breakCount: state.breakCount - 1\n      });\n    case 'SET_WORK_COUNT':\n      return _extends({}, state, {\n        workCount: state.workSession * 60\n      });\n      return state;\n    case 'DECREMENT_WORK_COUNT':\n      return _extends({}, state, {\n        workCount: state.workCount - 1\n      });\n    default:\n      return state;\n\n  };\n};\n\n// export var countdownStatusReducer = (state = 'stopped', action) => {\n//   switch (action.type) {\n//     case 'SET_STATUS':\n//       return action.status;\n//     default:\n//       return state;\n//   };\n// };\n\n// export var sessionTypeReducer = (state = 'work', action) => {\n//   switch (action.type) {\n//     case 'SET_SESSION_WORK':\n//       return action.status;\n//     case 'SET_TO_BREAK':\n//       return action.status;\n//     default:\n//       return state;\n//   };\n// };\n\n// export var breakSessionReducer = (state = 5, action) => {\n//   switch (action.type) {\n//     case 'INCREMENT_BREAK_SESSION':\n//       return state + 1;\n//     case 'DECREMENT_BREAK_SESSION':\n//       return state - 1;\n//     default:\n//       return state;\n//   };\n// };\n\n// export var workSessionReducer = (state = 25, action) => {\n//   switch (action.type) {\n//     case 'INCREMENT_WORK_SESSION':\n//       return state + 1;\n//     case 'DECREMENT_WORK_SESSION':\n//       return state - 1;\n//     default:\n//       return state;\n//   };\n// };\n\n// export var breakCountReducer = (state = 300, action) => {\n//   switch (action.type) {\n//     case 'SET_BREAK_COUNT':\n//       //temp\n//       return state;\n//     case 'DECREMENT_BREAK_COUNT':\n//       return state - 1;\n//     default:\n//       return state;\n//\n//   };\n// };\n\n// export var workCountReducer = (state = 1500, action) => {\n//   switch (action.type) {\n//     case 'SET_WORK_COUNT':\n//       //temp\n//       return state;\n//     case 'DECREMENT_WORK_COUNT':\n//       return state - 1;\n//     default:\n//       return state;\n//\n//   };\n// };//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiMjU0LmpzIiwic291cmNlcyI6WyJ3ZWJwYWNrOi8vL2FwcC9yZWR1Y2Vycy9yZWR1Y2Vycy5qc3g/YzdhNiJdLCJzb3VyY2VzQ29udGVudCI6WyJ2YXIgaW5pdGlhbFN0YXRlID0ge1xyXG4gIGNvdW50ZG93blN0YXR1czogJ3N0b3BwZWQnLFxyXG4gIGJyZWFrU2Vzc2lvbjogNSxcclxuICB3b3JrU2Vzc2lvbjogMjUsXHJcbiAgYnJlYWtDb3VudDogMzAwLFxyXG4gIHdvcmtDb3VudDogMTUwMCxcclxuICBzZXNzaW9uVHlwZTogJ3dvcmsnXHJcbn07XHJcblxyXG5leHBvcnQgdmFyIHBvbW9kb3JvUmVkdWNlciA9IChzdGF0ZSA9IGluaXRpYWxTdGF0ZSwgYWN0aW9uKSA9PiB7XHJcbiAgc3dpdGNoIChhY3Rpb24udHlwZSkge1xyXG4gICAgY2FzZSAnU0VUX1NUQVRVUyc6XHJcbiAgICAgIHJldHVybiB7XHJcbiAgICAgICAgLi4uc3RhdGUsXHJcbiAgICAgICAgY291bnRkb3duU3RhdHVzOiBhY3Rpb24udHlwZSAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBbJ2NvdW50ZG93blN0YXR1cyddID0gYWN0aW9uLnR5cGVcclxuICAgICAgfTtcclxuICAgIGNhc2UgJ1NFVF9TRVNTSU9OX1dPUksnOlxyXG4gICAgICByZXR1cm4ge1xyXG4gICAgICAgIC4uLnN0YXRlLFxyXG4gICAgICAgIHNlc3Npb25UeXBlOiBhY3Rpb24uc3RhdHVzXHJcbiAgICAgIH07XHJcbiAgICBjYXNlICdTRVRfVE9fQlJFQUsnOlxyXG4gICAgICByZXR1cm4ge1xyXG4gICAgICAgIC4uLnN0YXRlLFxyXG4gICAgICAgIHNlc3Npb25UeXBlOiBhY3Rpb24uc3RhdHVzXHJcbiAgICAgIH07XHJcbiAgICBjYXNlICdJTkNSRU1FTlRfQlJFQUtfU0VTU0lPTic6XHJcbiAgICAgIHJldHVybiB7XHJcbiAgICAgICAgLi4uc3RhdGUsXHJcbiAgICAgICAgYnJlYWtTZXNzaW9uOiBicmVha1Nlc3Npb24gKyAxXHJcbiAgICAgIH07XHJcbiAgICBjYXNlICdERUNSRU1FTlRfQlJFQUtfU0VTU0lPTic6XHJcbiAgICAgIHJldHVybiB7XHJcbiAgICAgICAgLi4uc3RhdGUsXHJcbiAgICAgICAgYnJlYWtTZXNzaW9uOiBicmVha1Nlc3Npb24gLSAxXHJcbiAgICAgIH07XHJcbiAgICBjYXNlICdJTkNSRU1FTlRfV09SS19TRVNTSU9OJzpcclxuICAgICAgcmV0dXJuIHtcclxuICAgICAgICAuLi5zdGF0ZSxcclxuICAgICAgICB3b3JrU2Vzc2lvbjogd29ya1Nlc3Npb24gKyAxXHJcbiAgICAgIH07XHJcbiAgICBjYXNlICdERUNSRU1FTlRfV09SS19TRVNTSU9OJzpcclxuICAgICAgcmV0dXJuIHtcclxuICAgICAgICAuLi5zdGF0ZSxcclxuICAgICAgICB3b3JrU2Vzc2lvbjogd29ya1Nlc3Npb24gLSAxXHJcbiAgICAgIH07XHJcbiAgICBjYXNlICdTRVRfQlJFQUtfQ09VTlQnOlxyXG4gICAgcmV0dXJuIHtcclxuICAgICAgLi4uc3RhdGUsXHJcbiAgICAgIGJyZWFrQ291bnQ6IHN0YXRlLmJyZWFrU2Vzc2lvbiAqIDYwXHJcbiAgICB9XHJcbiAgICAgIHJldHVybiBzdGF0ZTtcclxuICAgIGNhc2UgJ0RFQ1JFTUVOVF9CUkVBS19DT1VOVCc6XHJcbiAgICAgIHJldHVybiB7XHJcbiAgICAgICAgLi4uc3RhdGUsXHJcbiAgICAgICAgYnJlYWtDb3VudDogc3RhdGUuYnJlYWtDb3VudCAtIDFcclxuICAgICAgfTtcclxuICAgIGNhc2UgJ1NFVF9XT1JLX0NPVU5UJzpcclxuICAgICAgcmV0dXJuIHtcclxuICAgICAgICAuLi5zdGF0ZSxcclxuICAgICAgICB3b3JrQ291bnQ6IHN0YXRlLndvcmtTZXNzaW9uICogNjBcclxuICAgICAgfVxyXG4gICAgICByZXR1cm4gc3RhdGU7XHJcbiAgICBjYXNlICdERUNSRU1FTlRfV09SS19DT1VOVCc6XHJcbiAgICAgIHJldHVybiB7XHJcbiAgICAgICAgLi4uc3RhdGUsXHJcbiAgICAgICAgd29ya0NvdW50OiBzdGF0ZS53b3JrQ291bnQgLSAxXHJcbiAgICAgIH07XHJcbiAgICBkZWZhdWx0OlxyXG4gICAgICByZXR1cm4gc3RhdGVcclxuXHJcbiAgfTtcclxufTtcclxuXHJcbi8vIGV4cG9ydCB2YXIgY291bnRkb3duU3RhdHVzUmVkdWNlciA9IChzdGF0ZSA9ICdzdG9wcGVkJywgYWN0aW9uKSA9PiB7XHJcbi8vICAgc3dpdGNoIChhY3Rpb24udHlwZSkge1xyXG4vLyAgICAgY2FzZSAnU0VUX1NUQVRVUyc6XHJcbi8vICAgICAgIHJldHVybiBhY3Rpb24uc3RhdHVzO1xyXG4vLyAgICAgZGVmYXVsdDpcclxuLy8gICAgICAgcmV0dXJuIHN0YXRlO1xyXG4vLyAgIH07XHJcbi8vIH07XHJcblxyXG4vLyBleHBvcnQgdmFyIHNlc3Npb25UeXBlUmVkdWNlciA9IChzdGF0ZSA9ICd3b3JrJywgYWN0aW9uKSA9PiB7XHJcbi8vICAgc3dpdGNoIChhY3Rpb24udHlwZSkge1xyXG4vLyAgICAgY2FzZSAnU0VUX1NFU1NJT05fV09SSyc6XHJcbi8vICAgICAgIHJldHVybiBhY3Rpb24uc3RhdHVzO1xyXG4vLyAgICAgY2FzZSAnU0VUX1RPX0JSRUFLJzpcclxuLy8gICAgICAgcmV0dXJuIGFjdGlvbi5zdGF0dXM7XHJcbi8vICAgICBkZWZhdWx0OlxyXG4vLyAgICAgICByZXR1cm4gc3RhdGU7XHJcbi8vICAgfTtcclxuLy8gfTtcclxuXHJcbi8vIGV4cG9ydCB2YXIgYnJlYWtTZXNzaW9uUmVkdWNlciA9IChzdGF0ZSA9IDUsIGFjdGlvbikgPT4ge1xyXG4vLyAgIHN3aXRjaCAoYWN0aW9uLnR5cGUpIHtcclxuLy8gICAgIGNhc2UgJ0lOQ1JFTUVOVF9CUkVBS19TRVNTSU9OJzpcclxuLy8gICAgICAgcmV0dXJuIHN0YXRlICsgMTtcclxuLy8gICAgIGNhc2UgJ0RFQ1JFTUVOVF9CUkVBS19TRVNTSU9OJzpcclxuLy8gICAgICAgcmV0dXJuIHN0YXRlIC0gMTtcclxuLy8gICAgIGRlZmF1bHQ6XHJcbi8vICAgICAgIHJldHVybiBzdGF0ZTtcclxuLy8gICB9O1xyXG4vLyB9O1xyXG5cclxuLy8gZXhwb3J0IHZhciB3b3JrU2Vzc2lvblJlZHVjZXIgPSAoc3RhdGUgPSAyNSwgYWN0aW9uKSA9PiB7XHJcbi8vICAgc3dpdGNoIChhY3Rpb24udHlwZSkge1xyXG4vLyAgICAgY2FzZSAnSU5DUkVNRU5UX1dPUktfU0VTU0lPTic6XHJcbi8vICAgICAgIHJldHVybiBzdGF0ZSArIDE7XHJcbi8vICAgICBjYXNlICdERUNSRU1FTlRfV09SS19TRVNTSU9OJzpcclxuLy8gICAgICAgcmV0dXJuIHN0YXRlIC0gMTtcclxuLy8gICAgIGRlZmF1bHQ6XHJcbi8vICAgICAgIHJldHVybiBzdGF0ZTtcclxuLy8gICB9O1xyXG4vLyB9O1xyXG5cclxuLy8gZXhwb3J0IHZhciBicmVha0NvdW50UmVkdWNlciA9IChzdGF0ZSA9IDMwMCwgYWN0aW9uKSA9PiB7XHJcbi8vICAgc3dpdGNoIChhY3Rpb24udHlwZSkge1xyXG4vLyAgICAgY2FzZSAnU0VUX0JSRUFLX0NPVU5UJzpcclxuLy8gICAgICAgLy90ZW1wXHJcbi8vICAgICAgIHJldHVybiBzdGF0ZTtcclxuLy8gICAgIGNhc2UgJ0RFQ1JFTUVOVF9CUkVBS19DT1VOVCc6XHJcbi8vICAgICAgIHJldHVybiBzdGF0ZSAtIDE7XHJcbi8vICAgICBkZWZhdWx0OlxyXG4vLyAgICAgICByZXR1cm4gc3RhdGU7XHJcbi8vXHJcbi8vICAgfTtcclxuLy8gfTtcclxuXHJcbi8vIGV4cG9ydCB2YXIgd29ya0NvdW50UmVkdWNlciA9IChzdGF0ZSA9IDE1MDAsIGFjdGlvbikgPT4ge1xyXG4vLyAgIHN3aXRjaCAoYWN0aW9uLnR5cGUpIHtcclxuLy8gICAgIGNhc2UgJ1NFVF9XT1JLX0NPVU5UJzpcclxuLy8gICAgICAgLy90ZW1wXHJcbi8vICAgICAgIHJldHVybiBzdGF0ZTtcclxuLy8gICAgIGNhc2UgJ0RFQ1JFTUVOVF9XT1JLX0NPVU5UJzpcclxuLy8gICAgICAgcmV0dXJuIHN0YXRlIC0gMTtcclxuLy8gICAgIGRlZmF1bHQ6XHJcbi8vICAgICAgIHJldHVybiBzdGF0ZTtcclxuLy9cclxuLy8gICB9O1xyXG4vLyB9O1xyXG5cblxuXG4vKiogV0VCUEFDSyBGT09URVIgKipcbiAqKiBhcHAvcmVkdWNlcnMvcmVkdWNlcnMuanN4XG4gKiovIl0sIm1hcHBpbmdzIjoiOzs7Ozs7OztBQUFBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBTkE7QUFDQTtBQVFBO0FBQUE7QUFBQTtBQUNBO0FBQUE7QUFDQTtBQUNBO0FBRUE7QUFGQTtBQUlBO0FBQ0E7QUFFQTtBQUZBO0FBSUE7QUFDQTtBQUVBO0FBRkE7QUFJQTtBQUNBO0FBRUE7QUFGQTtBQUlBO0FBQ0E7QUFFQTtBQUZBO0FBSUE7QUFDQTtBQUVBO0FBRkE7QUFJQTtBQUNBO0FBRUE7QUFGQTtBQUlBO0FBQ0E7QUFFQTtBQUZBO0FBSUE7QUFDQTtBQUNBO0FBRUE7QUFGQTtBQUlBO0FBQ0E7QUFFQTtBQUZBO0FBSUE7QUFDQTtBQUNBO0FBRUE7QUFGQTtBQUlBO0FBQ0E7QUFDQTtBQTVEQTtBQThEQTtBQUNBOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7OyIsInNvdXJjZVJvb3QiOiIifQ==");
 
 /***/ },
 /* 255 */
 /***/ function(module, exports, __webpack_require__) {
 
-	eval("// style-loader: Adds some css to the DOM by adding a <style> tag\n\n// load the styles\nvar content = __webpack_require__(256);\nif(typeof content === 'string') content = [[module.id, content, '']];\n// add the styles to the DOM\nvar update = __webpack_require__(258)(content, {});\nif(content.locals) module.exports = content.locals;\n// Hot Module Replacement\nif(false) {\n\t// When the styles change, update the <style> tags\n\tif(!content.locals) {\n\t\tmodule.hot.accept(\"!!./../../node_modules/css-loader/index.js!./../../node_modules/sass-loader/index.js!./app.scss\", function() {\n\t\t\tvar newContent = require(\"!!./../../node_modules/css-loader/index.js!./../../node_modules/sass-loader/index.js!./app.scss\");\n\t\t\tif(typeof newContent === 'string') newContent = [[module.id, newContent, '']];\n\t\t\tupdate(newContent);\n\t\t});\n\t}\n\t// When the module is disposed, remove the <style> tags\n\tmodule.hot.dispose(function() { update(); });\n}//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiMjU1LmpzIiwic291cmNlcyI6WyJ3ZWJwYWNrOi8vLy4vYXBwL3N0eWxlcy9hcHAuc2Nzcz9iMjlmIl0sInNvdXJjZXNDb250ZW50IjpbIi8vIHN0eWxlLWxvYWRlcjogQWRkcyBzb21lIGNzcyB0byB0aGUgRE9NIGJ5IGFkZGluZyBhIDxzdHlsZT4gdGFnXG5cbi8vIGxvYWQgdGhlIHN0eWxlc1xudmFyIGNvbnRlbnQgPSByZXF1aXJlKFwiISEuLy4uLy4uL25vZGVfbW9kdWxlcy9jc3MtbG9hZGVyL2luZGV4LmpzIS4vLi4vLi4vbm9kZV9tb2R1bGVzL3Nhc3MtbG9hZGVyL2luZGV4LmpzIS4vYXBwLnNjc3NcIik7XG5pZih0eXBlb2YgY29udGVudCA9PT0gJ3N0cmluZycpIGNvbnRlbnQgPSBbW21vZHVsZS5pZCwgY29udGVudCwgJyddXTtcbi8vIGFkZCB0aGUgc3R5bGVzIHRvIHRoZSBET01cbnZhciB1cGRhdGUgPSByZXF1aXJlKFwiIS4vLi4vLi4vbm9kZV9tb2R1bGVzL3N0eWxlLWxvYWRlci9hZGRTdHlsZXMuanNcIikoY29udGVudCwge30pO1xuaWYoY29udGVudC5sb2NhbHMpIG1vZHVsZS5leHBvcnRzID0gY29udGVudC5sb2NhbHM7XG4vLyBIb3QgTW9kdWxlIFJlcGxhY2VtZW50XG5pZihtb2R1bGUuaG90KSB7XG5cdC8vIFdoZW4gdGhlIHN0eWxlcyBjaGFuZ2UsIHVwZGF0ZSB0aGUgPHN0eWxlPiB0YWdzXG5cdGlmKCFjb250ZW50LmxvY2Fscykge1xuXHRcdG1vZHVsZS5ob3QuYWNjZXB0KFwiISEuLy4uLy4uL25vZGVfbW9kdWxlcy9jc3MtbG9hZGVyL2luZGV4LmpzIS4vLi4vLi4vbm9kZV9tb2R1bGVzL3Nhc3MtbG9hZGVyL2luZGV4LmpzIS4vYXBwLnNjc3NcIiwgZnVuY3Rpb24oKSB7XG5cdFx0XHR2YXIgbmV3Q29udGVudCA9IHJlcXVpcmUoXCIhIS4vLi4vLi4vbm9kZV9tb2R1bGVzL2Nzcy1sb2FkZXIvaW5kZXguanMhLi8uLi8uLi9ub2RlX21vZHVsZXMvc2Fzcy1sb2FkZXIvaW5kZXguanMhLi9hcHAuc2Nzc1wiKTtcblx0XHRcdGlmKHR5cGVvZiBuZXdDb250ZW50ID09PSAnc3RyaW5nJykgbmV3Q29udGVudCA9IFtbbW9kdWxlLmlkLCBuZXdDb250ZW50LCAnJ11dO1xuXHRcdFx0dXBkYXRlKG5ld0NvbnRlbnQpO1xuXHRcdH0pO1xuXHR9XG5cdC8vIFdoZW4gdGhlIG1vZHVsZSBpcyBkaXNwb3NlZCwgcmVtb3ZlIHRoZSA8c3R5bGU+IHRhZ3Ncblx0bW9kdWxlLmhvdC5kaXNwb3NlKGZ1bmN0aW9uKCkgeyB1cGRhdGUoKTsgfSk7XG59XG5cblxuLyoqKioqKioqKioqKioqKioqXG4gKiogV0VCUEFDSyBGT09URVJcbiAqKiAuL34vc3R5bGUtbG9hZGVyIS4vfi9jc3MtbG9hZGVyIS4vfi9zYXNzLWxvYWRlciEuL2FwcC9zdHlsZXMvYXBwLnNjc3NcbiAqKiBtb2R1bGUgaWQgPSAyNTVcbiAqKiBtb2R1bGUgY2h1bmtzID0gMFxuICoqLyJdLCJtYXBwaW5ncyI6IkFBQUE7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBIiwic291cmNlUm9vdCI6IiJ9");
+	eval("// style-loader: Adds some css to the DOM by adding a <style> tag\n\n// load the styles\nvar content = __webpack_require__(256);\nif(typeof content === 'string') content = [[module.id, content, '']];\n// add the styles to the DOM\nvar update = __webpack_require__(258)(content, {});\nif(content.locals) module.exports = content.locals;\n// Hot Module Replacement\nif(true) {\n\t// When the styles change, update the <style> tags\n\tif(!content.locals) {\n\t\tmodule.hot.accept(256, function() {\n\t\t\tvar newContent = __webpack_require__(256);\n\t\t\tif(typeof newContent === 'string') newContent = [[module.id, newContent, '']];\n\t\t\tupdate(newContent);\n\t\t});\n\t}\n\t// When the module is disposed, remove the <style> tags\n\tmodule.hot.dispose(function() { update(); });\n}//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiMjU1LmpzIiwic291cmNlcyI6WyJ3ZWJwYWNrOi8vLy4vYXBwL3N0eWxlcy9hcHAuc2Nzcz9iMjlmIl0sInNvdXJjZXNDb250ZW50IjpbIi8vIHN0eWxlLWxvYWRlcjogQWRkcyBzb21lIGNzcyB0byB0aGUgRE9NIGJ5IGFkZGluZyBhIDxzdHlsZT4gdGFnXG5cbi8vIGxvYWQgdGhlIHN0eWxlc1xudmFyIGNvbnRlbnQgPSByZXF1aXJlKFwiISEuLy4uLy4uL25vZGVfbW9kdWxlcy9jc3MtbG9hZGVyL2luZGV4LmpzIS4vLi4vLi4vbm9kZV9tb2R1bGVzL3Nhc3MtbG9hZGVyL2luZGV4LmpzIS4vYXBwLnNjc3NcIik7XG5pZih0eXBlb2YgY29udGVudCA9PT0gJ3N0cmluZycpIGNvbnRlbnQgPSBbW21vZHVsZS5pZCwgY29udGVudCwgJyddXTtcbi8vIGFkZCB0aGUgc3R5bGVzIHRvIHRoZSBET01cbnZhciB1cGRhdGUgPSByZXF1aXJlKFwiIS4vLi4vLi4vbm9kZV9tb2R1bGVzL3N0eWxlLWxvYWRlci9hZGRTdHlsZXMuanNcIikoY29udGVudCwge30pO1xuaWYoY29udGVudC5sb2NhbHMpIG1vZHVsZS5leHBvcnRzID0gY29udGVudC5sb2NhbHM7XG4vLyBIb3QgTW9kdWxlIFJlcGxhY2VtZW50XG5pZihtb2R1bGUuaG90KSB7XG5cdC8vIFdoZW4gdGhlIHN0eWxlcyBjaGFuZ2UsIHVwZGF0ZSB0aGUgPHN0eWxlPiB0YWdzXG5cdGlmKCFjb250ZW50LmxvY2Fscykge1xuXHRcdG1vZHVsZS5ob3QuYWNjZXB0KFwiISEuLy4uLy4uL25vZGVfbW9kdWxlcy9jc3MtbG9hZGVyL2luZGV4LmpzIS4vLi4vLi4vbm9kZV9tb2R1bGVzL3Nhc3MtbG9hZGVyL2luZGV4LmpzIS4vYXBwLnNjc3NcIiwgZnVuY3Rpb24oKSB7XG5cdFx0XHR2YXIgbmV3Q29udGVudCA9IHJlcXVpcmUoXCIhIS4vLi4vLi4vbm9kZV9tb2R1bGVzL2Nzcy1sb2FkZXIvaW5kZXguanMhLi8uLi8uLi9ub2RlX21vZHVsZXMvc2Fzcy1sb2FkZXIvaW5kZXguanMhLi9hcHAuc2Nzc1wiKTtcblx0XHRcdGlmKHR5cGVvZiBuZXdDb250ZW50ID09PSAnc3RyaW5nJykgbmV3Q29udGVudCA9IFtbbW9kdWxlLmlkLCBuZXdDb250ZW50LCAnJ11dO1xuXHRcdFx0dXBkYXRlKG5ld0NvbnRlbnQpO1xuXHRcdH0pO1xuXHR9XG5cdC8vIFdoZW4gdGhlIG1vZHVsZSBpcyBkaXNwb3NlZCwgcmVtb3ZlIHRoZSA8c3R5bGU+IHRhZ3Ncblx0bW9kdWxlLmhvdC5kaXNwb3NlKGZ1bmN0aW9uKCkgeyB1cGRhdGUoKTsgfSk7XG59XG5cblxuLyoqKioqKioqKioqKioqKioqXG4gKiogV0VCUEFDSyBGT09URVJcbiAqKiAuL34vc3R5bGUtbG9hZGVyIS4vfi9jc3MtbG9hZGVyIS4vfi9zYXNzLWxvYWRlciEuL2FwcC9zdHlsZXMvYXBwLnNjc3NcbiAqKiBtb2R1bGUgaWQgPSAyNTVcbiAqKiBtb2R1bGUgY2h1bmtzID0gMFxuICoqLyJdLCJtYXBwaW5ncyI6IkFBQUE7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBO0FBQ0E7QUFDQTtBQUNBIiwic291cmNlUm9vdCI6IiJ9");
 
 /***/ },
 /* 256 */

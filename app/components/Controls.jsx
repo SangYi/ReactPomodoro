@@ -3,10 +3,10 @@ var {connect} = require('react-redux');
 var actions = require('actions');
 
 export var Controls = React.createClass({
-  propTypes: {
-    countdownStatus: React.PropTypes.string.isRequired,
-    onStatusChange: React.PropTypes.func.isRequired
-  },
+  // propTypes: {
+  //   countdownStatus: React.PropTypes.string.isRequired,
+  //   onStatusChange: React.PropTypes.func.isRequired
+  // },
 
   onStatusChange: function(newStatus){
     return () => {
@@ -28,9 +28,10 @@ export var Controls = React.createClass({
   },
 
   render: function(){
-    var {countdownStatus, breakSession, workSession, dispatch} = this.props;
+    // var {countdownStatus, breakSession, workSession, dispatch} = this.props;
+    var {pomodoro, dispatch} = this.props;
     var renderStartStopButton = () => {
-      if(countdownStatus ==='started'){
+      if(pomodoro.countdownStatus ==='started'){
         return <button className="button secondary" onClick={() => {
             dispatch(actions.setStatus('paused'))
           }}>Pause</button>
@@ -46,12 +47,12 @@ export var Controls = React.createClass({
       <div className="controls">
         <button className="button alert hollow" onClick={() => {
             dispatch(actions.decrementBreakSession())
-          }}>-</button> {this.props.breakSession} Break <button className="button alert hollow" onClick={() => {
+          }}>-</button> {pomodoro.breakSession} Break <button className="button alert hollow" onClick={() => {
             dispatch(actions.incrementBreakSession())
           }}>+</button>
         <button className="button alert hollow" onClick={() => {
             dispatch(actions.decrementWorkSession())
-          }}>-</button> {this.props.workSession} Work <button className="button alert hollow" onClick={() => {
+          }}>-</button> {pomodoro.workSession} Work <button className="button alert hollow" onClick={() => {
             dispatch(actions.incrementWorkSession())
           }}>+</button>
         <div>
@@ -68,10 +69,6 @@ export var Controls = React.createClass({
 
 export default connect(
   (state) => {
-    return {
-      countdownStatus: state.countdownStatus,
-      breakSession: state.breakSession,
-      workSession: state.workSession
-    };
+    return state;
   }
 )(Controls);
